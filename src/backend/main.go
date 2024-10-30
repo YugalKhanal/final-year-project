@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -63,6 +64,11 @@ func (s *Server) readLoop(conn net.Conn) {
 	buf := make([]byte, 2048)
 	for {
 		n, err := conn.Read(buf)
+		if err == io.EOF {
+			fmt.Println("Connection closed by client")
+			break
+		}
+
 		if err != nil {
 			fmt.Println("read error:", err)
 			continue
@@ -80,15 +86,37 @@ func (s *Server) readLoop(conn net.Conn) {
 	}
 }
 
+// func main() {
+//
+// 	go RouteHandler()
+//
+// 	server := NewServer(":3000")
+// 	fmt.Println("Server running at http://localhost:3000")
+//
+// 	go func() {
+// 		for msg := range server.msgch {
+// 			// fmt.Println("received message from connection:", string(msg))
+// 			fmt.Printf("received message from connection (%s):%s\n", msg.from, msg.payload)
+// 		}
+// 	}()
+//
+// 	log.Fatal(server.Start())
+// }
+
 func main() {
 	server := NewServer(":3000")
+	fmt.Println("TCP Server running at localhost:3000")
+	go func() {
+		log.Fatal(server.Start())
+	}()
+
+	go RouteHandler()
 
 	go func() {
 		for msg := range server.msgch {
-			// fmt.Println("received message from connection:", string(msg))
-			fmt.Printf("received message from connection (%s):%s\n", msg.from, msg.payload)
+			fmt.Printf("Received message from connection (%s): %s\n", msg.from, msg.payload)
 		}
 	}()
 
-	log.Fatal(server.Start())
+	select {} // Block indefinitely to keep the servers alive
 }

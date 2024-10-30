@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
-	"path/filepath"
+	// "path/filepath"
 )
 
 func RouteHandler() {
@@ -17,7 +18,7 @@ func RouteHandler() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-// func uploadHandler(w http.ResponseWriter, r *http.Request) {
+// func uploadHandler(w http.ResponseWriter, r *http.Request){
 // 	// Ensure the "uploads" directory exists
 // 	uploadsDir := "uploads"
 // 	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
@@ -58,9 +59,7 @@ func RouteHandler() {
 // 	fmt.Fprintf(w, "File uploaded successfully: %s\n", header.Filename)
 // }
 
-
-func uploadHandler(w http.ResponseWriter, r *http.Request){
-	// Ensure the "uploads" directory exists
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	uploadsDir := "uploads"
 	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
 		err := os.Mkdir(uploadsDir, os.ModePerm)
@@ -70,32 +69,34 @@ func uploadHandler(w http.ResponseWriter, r *http.Request){
 		}
 	}
 
-	file, header, err := r.FormFile("file") // Make sure this matches your HTML form field name
+	// Parse the file from the form
+	file, header, err := r.FormFile("file")
 	if err != nil {
-    // w.Write(nil)
 		http.Error(w, "Unable to read file", http.StatusBadRequest)
-		fmt.Println(err)
 		return
 	}
 	defer file.Close()
 
-	// Define the destination path
-	dst := filepath.Join(uploadsDir, header.Filename)
-	out, err := os.Create(dst)
+	// Open a TCP connection to the TCP server
+	conn, err := net.Dial("tcp", "localhost:3000") // Connect to TCP server on port 3000
 	if err != nil {
-		http.Error(w, "Unable to save file", http.StatusInternalServerError)
+    fmt.Println(err)
+		http.Error(w, "Unable to connect to TCP server", http.StatusInternalServerError)
 		return
 	}
-	defer out.Close()
+	defer conn.Close()
 
-	// Write the file to the destination path
-  // (out, file) -> (destination(path), source)
-	_, err = io.Copy(out, file)
+	// Send file name to the TCP server
+	fmt.Fprintln(conn, header.Filename)
+
+	// Send the file content to the TCP server
+	_, err = io.Copy(conn, file)
 	if err != nil {
-		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		http.Error(w, "Error sending file to TCP server", http.StatusInternalServerError)
 		return
 	}
 
+	// Respond to the front end that the file was uploaded successfully
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "File uploaded successfully: %s\n", header.Filename)
+	fmt.Fprintf(w, "File uploaded and sent to TCP server: %s\n", header.Filename)
 }
