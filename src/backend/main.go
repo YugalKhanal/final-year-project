@@ -1,122 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"io"
 	"log"
-	"net"
+
+	"github.com/YugalKhanal/fyp/p2p"
 )
 
-type Message struct {
-	from    string
-	payload []byte
-}
+func main(){
+  tr := p2p.NewTCPTransport(":3000")
 
-type Server struct {
-	listenAddr string
-	ln         net.Listener
-	quitch     chan struct{}
-	msgch      chan Message
-}
+  if err := tr.ListenAndAccept(); err != nil {
+    log.Fatal(err)
+  }
 
-func NewServer(listenAddr string) *Server {
-	return &Server{
-		listenAddr: listenAddr,
-		quitch:     make(chan struct{}),
-		msgch:      make(chan Message),
-	}
-
-}
-
-func (s *Server) Start() error {
-	ln, err := net.Listen("tcp", s.listenAddr)
-	if err != nil {
-		return err
-	}
-	defer ln.Close()
-	s.ln = ln
-
-	go s.acceptLoop()
-
-	<-s.quitch
-	close(s.msgch)
-
-	return nil
-}
-
-func (s *Server) acceptLoop() {
-	for {
-		conn, err := s.ln.Accept()
-		if err != nil {
-			fmt.Println("accept error:", err)
-			continue
-		}
-
-		fmt.Println("new connection to the server:", conn.RemoteAddr())
-
-		//call readLoop with conn from above as its argument
-		go s.readLoop(conn)
-	}
-}
-
-func (s *Server) readLoop(conn net.Conn) {
-	defer conn.Close()
-	buf := make([]byte, 2048)
-	for {
-		n, err := conn.Read(buf)
-		if err == io.EOF {
-			fmt.Println("Connection closed by client")
-			break
-		}
-
-		if err != nil {
-			fmt.Println("read error:", err)
-			continue
-		}
-
-		// msg := buf[:n]
-		// fmt.Println(string(msg))
-		s.msgch <- Message{
-			from:    conn.RemoteAddr().String(),
-			payload: buf[:n],
-		}
-
-		conn.Write([]byte("hello from the server and thank you for your message!"))
-
-	}
-}
-
-// func main() {
-//
-// 	go RouteHandler()
-//
-// 	server := NewServer(":3000")
-// 	fmt.Println("Server running at http://localhost:3000")
-//
-// 	go func() {
-// 		for msg := range server.msgch {
-// 			// fmt.Println("received message from connection:", string(msg))
-// 			fmt.Printf("received message from connection (%s):%s\n", msg.from, msg.payload)
-// 		}
-// 	}()
-//
-// 	log.Fatal(server.Start())
-// }
-
-func main() {
-	server := NewServer(":3000")
-	fmt.Println("TCP Server running at localhost:3000")
-	go func() {
-		log.Fatal(server.Start())
-	}()
-
-	go RouteHandler()
-
-	go func() {
-		for msg := range server.msgch {
-			fmt.Printf("Received message from connection (%s): %s\n", msg.from, msg.payload)
-		}
-	}()
-
-	select {} // Block indefinitely to keep the servers alive
+  select {}
 }
