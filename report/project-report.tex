@@ -1,82 +1,277 @@
+% \documentclass[12pt,a4paper]{report}
+% \usepackage{graphicx}
+% \usepackage{amsmath}
+% \usepackage{hyperref}
+%
+% \title{Peer-to-Peer File Sharing System}
+% \author{Yugal Khanal 2302704}
+% \date{}
+%
+% \begin{document}
+%
+% \maketitle
+%
+% \begin{abstract}
+% 	% Briefly summarize the project, objectives, methods, and outcomes (100-300 words).
+% 	% This section should highlight the main points of the report, including the purpose of the project, the approach taken, and the key results achieved.
+% 	This project aims to develop a decentralised peer-to-peer file sharing system with robustness, fault tolerance, stability, reliability and data security. The primary objective of this project is to build a scalable and secure P2P network that allows users to upload, distribute, and download files efficiently across multiple nodes. The system implements both an HTTP server, which provides a user-friendly interface for file uploads, and a TCP server, which handles the data transfer between peers in the network.
+%
+% 	This approach minimizes dependence on any single point of control, improving the system’s resilience and fault tolerance.
+%
+% 	\vspace{3.5mm}Key features include file upload handling via a web interface, seamless peer communication using TCP connections, and efficient file distribution protocols. The system addresses significant challenges in network programming, data integrity, and fault tolerance to ensure that file transfers are both reliable and secure. Additional modules manage directory structures and ensure the smooth operation of file I/O processes. The project emphasizes modularity, making it possible to extend functionality to incorporate more advanced P2P techniques such as file indexing and peer discovery in the future. This report documents the design, development, and testing of the P2P File Sharing System, demonstrating its potential as a robust and scalable solution for decentralized file distribution.
+% \end{abstract}
+%
+% \tableofcontents
+% \newpage
+%
+% \chapter{Introduction}
+% % Outline the context of P2P file sharing and its relevance. Identify stakeholders and state the project’s aims.
+% Provide a background of P2P file sharing systems, their uses, and importance. Include the project’s goals and key objectives .
+%
+%
+% \chapter{Research}
+% % Conduct a literature review on existing P2P systems, network security in distributed systems, and fault tolerance.
+% % Discuss how your approach improves upon current models.
+% Review relevant literature, current solutions, and techniques in P2P file sharing and network security. Highlight gaps in existing systems that your project addresses.
+%
+% \chapter{Legal, Social, Ethical, and Professional Issues}
+% % Address issues such as data privacy laws, potential misuse, and ethical considerations.
+% Discuss relevant legal, ethical, and professional issues, such as data privacy regulations, intellectual property concerns, and ethical use cases.
+%
+%
+% \chapter{System Requirements}
+% % Detail functional and non-functional requirements, breaking down file-sharing, encryption, and network resilience needs.
+% Outline the functional requirements (core features like file transfer, encryption) and non-functional requirements (usability, performance).
+%
+% \chapter{Design}
+% % Describe the overall architecture, including modules for peer discovery, encryption, file transfer, and UI/UX elements.
+% Explain the design architecture of the system. Include high-level diagrams, module descriptions, and interactions among components.
+%
+% \chapter{Implementation}
+% % Document the development process, highlighting any challenges faced and key design decisions.
+% Describe the implementation details, programming languages, libraries, and frameworks used. Highlight significant implementation choices and challenges encountered.
+%
+% \chapter{Testing and Success Measurement}
+% % Summarize the results of your testing phases, using quantitative data where possible.
+% Discuss testing methodologies used (unit, integration, system tests). Include results and measures of success, such as performance metrics or security assessments.
+%
+% \chapter{Project Management}
+% % Discuss the project timeline, chosen development methodology, and major milestones.
+% Provide a project timeline with phases and milestones. Explain the chosen development methodology (e.g., Agile, Waterfall) and justify its use.
+%
+% \chapter{Evaluation}
+% % Reflect on how well the project met the initial requirements and discuss areas where it excelled or fell short.
+% Assess the project’s success relative to the requirements specified in Chapter 4. Discuss any limitations or areas for improvement.
+%
+% \chapter{Conclusion}
+% % Summarize key achievements, practical applications of the system, and possible future improvements.
+% Summarize the project’s outcomes, practical applications, and potential areas for future work.
+%
+% \chapter*{References}
+% % Cite all resources consistently, following a preferred style (e.g., IEEE, APA).
+% % Example:
+% % \begin{thebibliography}{9}
+% % \bibitem{latexcompanion} IEEE, "Title of paper", in Proc. of Conference, vol. X, no. X, pp. xx-xx, Year.
+% % \end{thebibliography}
+% List all references cited in the document, formatted consistently.
+%
+% \appendix
+% \chapter{Appendix}
+% % Include detailed code listings, additional diagrams, or supplementary testing data.
+% Any supplementary information like code snippets, extended data tables, or additional diagrams can be placed here.
+%
+% \end{document}
+
+
+
 \documentclass[12pt,a4paper]{report}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{hyperref}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{float}
+\usepackage{booktabs}
 
-\title{Peer-to-Peer File Sharing System}
-\author{Yugal Khanal 2302704}
-\date{}
+% Code listing settings
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{Peer-to-Peer File Sharing System:\\A Robust and Scalable Implementation}
+\author{Yugal Khanal\\2302704}
+\date{\today}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-	% Briefly summarize the project, objectives, methods, and outcomes (100-300 words).
-	% This section should highlight the main points of the report, including the purpose of the project, the approach taken, and the key results achieved.
-	This project aims to develop a decentralised peer-to-peer file sharing system with robustness, fault tolerance, stability, reliability and data security. The primary objective of this project is to build a scalable and secure P2P network that allows users to upload, distribute, and download files efficiently across multiple nodes. The system implements both an HTTP server, which provides a user-friendly interface for file uploads, and a TCP server, which handles the data transfer between peers in the network.
+	The proliferation of distributed systems has led to increased interest in peer-to-peer (P2P) architectures for file sharing. This dissertation presents the design, implementation, and evaluation of a robust P2P file sharing system that addresses key challenges in scalability, fault tolerance, and security. The system implements a hybrid architecture combining centralized tracking with distributed file storage, featuring chunked file transfer, piece verification, and concurrent downloading capabilities.
 
-	This approach minimizes dependence on any single point of control, improving the system’s resilience and fault tolerance.
+	The implementation includes sophisticated features such as tracker-based peer discovery, UPnP port mapping for NAT traversal, and a comprehensive piece management system for handling large file transfers. Through extensive testing and evaluation, the system demonstrates reliable performance under various network conditions while maintaining data integrity and transfer efficiency.
 
-	\vspace{3.5mm}Key features include file upload handling via a web interface, seamless peer communication using TCP connections, and efficient file distribution protocols. The system addresses significant challenges in network programming, data integrity, and fault tolerance to ensure that file transfers are both reliable and secure. Additional modules manage directory structures and ensure the smooth operation of file I/O processes. The project emphasizes modularity, making it possible to extend functionality to incorporate more advanced P2P techniques such as file indexing and peer discovery in the future. This report documents the design, development, and testing of the P2P File Sharing System, demonstrating its potential as a robust and scalable solution for decentralized file distribution.
+	This work contributes to the field by implementing novel approaches to common P2P challenges, including peer availability management and fault-tolerant file transfers, while providing insights into the practical considerations of building distributed systems.
+
+	\textbf{Keywords:} Peer-to-Peer Networks, Distributed Systems, File Sharing, Network Programming, Fault Tolerance
 \end{abstract}
 
 \tableofcontents
-\newpage
+\listoffigures
+\listoftables
 
 \chapter{Introduction}
-% Outline the context of P2P file sharing and its relevance. Identify stakeholders and state the project’s aims.
-Provide a background of P2P file sharing systems, their uses, and importance. Include the project’s goals and key objectives .
+\section{Background and Motivation}
+ [Discussion of the evolution of P2P systems and their role in modern networking]
 
-\chapter{Research}
-% Conduct a literature review on existing P2P systems, network security in distributed systems, and fault tolerance.
-% Discuss how your approach improves upon current models.
-Review relevant literature, current solutions, and techniques in P2P file sharing and network security. Highlight gaps in existing systems that your project addresses.
+\section{Project Objectives}
+ [Clear enumeration of project goals and success criteria]
 
-\chapter{Legal, Social, Ethical, and Professional Issues}
-% Address issues such as data privacy laws, potential misuse, and ethical considerations.
-Discuss relevant legal, ethical, and professional issues, such as data privacy regulations, intellectual property concerns, and ethical use cases.
+\section{Problem Statement}
+ [Detailed description of the challenges in P2P file sharing]
 
+\section{Project Scope}
+ [Outline of what the project encompasses and its boundaries]
 
-\chapter{System Requirements}
-% Detail functional and non-functional requirements, breaking down file-sharing, encryption, and network resilience needs.
-Outline the functional requirements (core features like file transfer, encryption) and non-functional requirements (usability, performance).
+\chapter{Literature Review}
+\section{History of P2P Systems}
+ [Evolution of P2P architectures and protocols]
 
-\chapter{Design}
-% Describe the overall architecture, including modules for peer discovery, encryption, file transfer, and UI/UX elements.
-Explain the design architecture of the system. Include high-level diagrams, module descriptions, and interactions among components.
+\section{BitTorrent Protocol Analysis}
+ [Detailed examination of BitTorrent's approach]
 
-\chapter{Implementation}
-% Document the development process, highlighting any challenges faced and key design decisions.
-Describe the implementation details, programming languages, libraries, and frameworks used. Highlight significant implementation choices and challenges encountered.
+\section{Modern P2P Applications}
+ [Survey of current P2P implementations]
 
-\chapter{Testing and Success Measurement}
-% Summarize the results of your testing phases, using quantitative data where possible.
-Discuss testing methodologies used (unit, integration, system tests). Include results and measures of success, such as performance metrics or security assessments.
+\section{Security Challenges in P2P Networks}
+ [Analysis of security considerations]
 
-\chapter{Project Management}
-% Discuss the project timeline, chosen development methodology, and major milestones.
-Provide a project timeline with phases and milestones. Explain the chosen development methodology (e.g., Agile, Waterfall) and justify its use.
+\section{Distributed Hash Tables and Peer Discovery}
+ [Review of peer discovery mechanisms]
 
-\chapter{Evaluation}
-% Reflect on how well the project met the initial requirements and discuss areas where it excelled or fell short.
-Assess the project’s success relative to the requirements specified in Chapter 4. Discuss any limitations or areas for improvement.
+\chapter{System Architecture}
+\section{High-Level Design}
+ [System overview with architectural diagrams]
 
-\chapter{Conclusion}
-% Summarize key achievements, practical applications of the system, and possible future improvements.
-Summarize the project’s outcomes, practical applications, and potential areas for future work.
+\section{Component Overview}
+ [Detailed description of system components]
 
-\chapter*{References}
-% Cite all resources consistently, following a preferred style (e.g., IEEE, APA).
-% Example:
-% \begin{thebibliography}{9}
-% \bibitem{latexcompanion} IEEE, "Title of paper", in Proc. of Conference, vol. X, no. X, pp. xx-xx, Year.
-% \end{thebibliography}
-List all references cited in the document, formatted consistently.
+\section{Network Protocol Design}
+ [Protocol specifications and communication patterns]
+
+\section{Data Flow Architecture}
+ [Data flow diagrams and explanations]
+
+\section{Storage System Design}
+ [File storage and management architecture]
+
+\chapter{Implementation Details}
+\section{Tracker Implementation}
+ [Details of the tracking system]
+
+\section{Peer Discovery and Management}
+ [Peer handling mechanisms]
+
+\section{File Chunking and Transfer Protocol}
+ [File transfer implementation details]
+
+\section{Concurrent Download Management}
+ [Concurrency handling approaches]
+
+\section{Error Handling and Recovery}
+ [Error management strategies]
+
+\section{Security Implementation}
+ [Security measures and protocols]
+
+\chapter{Technical Challenges and Solutions}
+\section{Network NAT Traversal}
+ [NAT handling implementation]
+
+\section{File Integrity Verification}
+ [Data verification mechanisms]
+
+\section{Peer Availability Management}
+ [Peer management strategies]
+
+\section{Performance Optimization}
+ [Performance improvements]
+
+\section{Fault Tolerance Implementation}
+ [Fault handling approaches]
+
+\chapter{Testing and Evaluation}
+\section{Performance Metrics}
+ [Performance testing results]
+
+\section{Scalability Testing}
+ [Scalability analysis]
+
+\section{Network Resilience}
+ [Network testing results]
+
+\section{Security Testing}
+ [Security evaluation]
+
+\section{User Experience Testing}
+ [Usability assessment]
+
+\chapter{Conclusion and Future Work}
+\section{Project Achievements}
+ [Summary of accomplishments]
+
+\section{Limitations}
+ [Project limitations]
+
+\section{Future Improvements}
+ [Potential enhancements]
+
+\section{Final Reflections}
+ [Concluding thoughts]
+
+\bibliographystyle{ieeetr}
+\bibliography{references}
 
 \appendix
-\chapter{Appendix}
-% Include detailed code listings, additional diagrams, or supplementary testing data.
-Any supplementary information like code snippets, extended data tables, or additional diagrams can be placed here.
+\chapter{Code Listings}
+\section{Core Components}
+% Example code listing:
+\begin{lstlisting}[language=Go, caption=Tracker Implementation]
+type Tracker struct {
+    fileIndex    map[string]*FileInfo
+    peerIndex    map[string]map[string]bool
+    peerLastSeen map[string]time.Time
+    mu           sync.RWMutex
+}
+\end{lstlisting}
+
+\chapter{Testing Data}
+ [Detailed test results and analysis]
+
+\chapter{User Manual}
+ [System usage instructions]
+
 
 \end{document}

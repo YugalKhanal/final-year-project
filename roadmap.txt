@@ -1,0 +1,142 @@
+I'll help you create a comprehensive structure for your 10,000-word dissertation based on your P2P file sharing implementation. After analyzing your code, I can see you've implemented several sophisticated features including:
+
+Tracker-based peer discovery
+Chunked file transfer with verification
+Distributed file storage
+UPnP port mapping
+Fault-tolerant file transfers
+Concurrent downloads with piece management
+Heartbeat mechanism for peer health checks
+Metadata management and verification
+
+Here's a proposed structure for your dissertation:
+Table of Contents
+
+Introduction (1000 words)
+
+Background and Motivation
+Project Objectives
+Problem Statement
+Project Scope
+
+
+Literature Review (1500 words)
+
+History of P2P Systems
+BitTorrent Protocol Analysis
+Modern P2P Applications
+Security Challenges in P2P Networks
+Distributed Hash Tables and Peer Discovery
+
+
+System Architecture (2000 words)
+
+High-Level Design
+Component Overview
+Network Protocol Design
+Data Flow Architecture
+Storage System Design
+
+
+Implementation Details (2500 words)
+
+Tracker Implementation
+Peer Discovery and Management
+File Chunking and Transfer Protocol
+Concurrent Download Management
+Error Handling and Recovery
+Security Implementation
+
+
+Technical Challenges and Solutions (1500 words)
+
+Network NAT Traversal
+File Integrity Verification
+Peer Availability Management
+Performance Optimization
+Fault Tolerance Implementation
+
+
+Testing and Evaluation (1000 words)
+
+Performance Metrics
+Scalability Testing
+Network Resilience
+Security Testing
+User Experience Testing
+
+
+Conclusion and Future Work (500 words)
+
+Project Achievements
+Limitations
+Future Improvements
+Final Reflections
+
+
+
+Implementation Plan:
+
+Week 1-2:
+
+Complete Introduction and Literature Review
+Gather academic sources
+Document existing implementation
+
+
+Week 3-4:
+
+Write System Architecture section
+Create system diagrams
+Document protocols
+
+
+Week 5-6:
+
+Write Implementation Details
+Create code examples
+Document key algorithms
+
+
+Week 7-8:
+
+Complete Technical Challenges section
+Perform testing
+Document results
+
+
+Week 9-10:
+
+Write Testing and Evaluation
+Complete Conclusion
+Review and refinement
+
+
+
+Key Areas to Focus On:
+
+Your chunking implementation with verification:
+
+goCopy// From piece_verification.go
+func generateFileHashes(filePath string, chunkSize int) ([]string, string, int64, error) {
+    // This shows sophisticated handling of file integrity
+}
+
+Your piece management system:
+
+goCopy// From piece_manager.go
+type PieceManager struct {
+    pieces    map[int]*PieceInfo
+    numPieces int
+    mu        sync.RWMutex
+}
+
+Your tracker implementation:
+
+goCopy// From tracker.go
+type Tracker struct {
+    fileIndex    map[string]*FileInfo
+    peerIndex    map[string]map[string]bool
+    peerLastSeen map[string]time.Time
+    mu           sync.RWMutex
+}
