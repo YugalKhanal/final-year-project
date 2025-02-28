@@ -1,89 +1,3 @@
-% \documentclass[12pt,a4paper]{report}
-% \usepackage{graphicx}
-% \usepackage{amsmath}
-% \usepackage{hyperref}
-%
-% \title{Peer-to-Peer File Sharing System}
-% \author{Yugal Khanal 2302704}
-% \date{}
-%
-% \begin{document}
-%
-% \maketitle
-%
-% \begin{abstract}
-% 	% Briefly summarize the project, objectives, methods, and outcomes (100-300 words).
-% 	% This section should highlight the main points of the report, including the purpose of the project, the approach taken, and the key results achieved.
-% 	This project aims to develop a decentralised peer-to-peer file sharing system with robustness, fault tolerance, stability, reliability and data security. The primary objective of this project is to build a scalable and secure P2P network that allows users to upload, distribute, and download files efficiently across multiple nodes. The system implements both an HTTP server, which provides a user-friendly interface for file uploads, and a TCP server, which handles the data transfer between peers in the network.
-%
-% 	This approach minimizes dependence on any single point of control, improving the system’s resilience and fault tolerance.
-%
-% 	\vspace{3.5mm}Key features include file upload handling via a web interface, seamless peer communication using TCP connections, and efficient file distribution protocols. The system addresses significant challenges in network programming, data integrity, and fault tolerance to ensure that file transfers are both reliable and secure. Additional modules manage directory structures and ensure the smooth operation of file I/O processes. The project emphasizes modularity, making it possible to extend functionality to incorporate more advanced P2P techniques such as file indexing and peer discovery in the future. This report documents the design, development, and testing of the P2P File Sharing System, demonstrating its potential as a robust and scalable solution for decentralized file distribution.
-% \end{abstract}
-%
-% \tableofcontents
-% \newpage
-%
-% \chapter{Introduction}
-% % Outline the context of P2P file sharing and its relevance. Identify stakeholders and state the project’s aims.
-% Provide a background of P2P file sharing systems, their uses, and importance. Include the project’s goals and key objectives .
-%
-%
-% \chapter{Research}
-% % Conduct a literature review on existing P2P systems, network security in distributed systems, and fault tolerance.
-% % Discuss how your approach improves upon current models.
-% Review relevant literature, current solutions, and techniques in P2P file sharing and network security. Highlight gaps in existing systems that your project addresses.
-%
-% \chapter{Legal, Social, Ethical, and Professional Issues}
-% % Address issues such as data privacy laws, potential misuse, and ethical considerations.
-% Discuss relevant legal, ethical, and professional issues, such as data privacy regulations, intellectual property concerns, and ethical use cases.
-%
-%
-% \chapter{System Requirements}
-% % Detail functional and non-functional requirements, breaking down file-sharing, encryption, and network resilience needs.
-% Outline the functional requirements (core features like file transfer, encryption) and non-functional requirements (usability, performance).
-%
-% \chapter{Design}
-% % Describe the overall architecture, including modules for peer discovery, encryption, file transfer, and UI/UX elements.
-% Explain the design architecture of the system. Include high-level diagrams, module descriptions, and interactions among components.
-%
-% \chapter{Implementation}
-% % Document the development process, highlighting any challenges faced and key design decisions.
-% Describe the implementation details, programming languages, libraries, and frameworks used. Highlight significant implementation choices and challenges encountered.
-%
-% \chapter{Testing and Success Measurement}
-% % Summarize the results of your testing phases, using quantitative data where possible.
-% Discuss testing methodologies used (unit, integration, system tests). Include results and measures of success, such as performance metrics or security assessments.
-%
-% \chapter{Project Management}
-% % Discuss the project timeline, chosen development methodology, and major milestones.
-% Provide a project timeline with phases and milestones. Explain the chosen development methodology (e.g., Agile, Waterfall) and justify its use.
-%
-% \chapter{Evaluation}
-% % Reflect on how well the project met the initial requirements and discuss areas where it excelled or fell short.
-% Assess the project’s success relative to the requirements specified in Chapter 4. Discuss any limitations or areas for improvement.
-%
-% \chapter{Conclusion}
-% % Summarize key achievements, practical applications of the system, and possible future improvements.
-% Summarize the project’s outcomes, practical applications, and potential areas for future work.
-%
-% \chapter*{References}
-% % Cite all resources consistently, following a preferred style (e.g., IEEE, APA).
-% % Example:
-% % \begin{thebibliography}{9}
-% % \bibitem{latexcompanion} IEEE, "Title of paper", in Proc. of Conference, vol. X, no. X, pp. xx-xx, Year.
-% % \end{thebibliography}
-% List all references cited in the document, formatted consistently.
-%
-% \appendix
-% \chapter{Appendix}
-% % Include detailed code listings, additional diagrams, or supplementary testing data.
-% Any supplementary information like code snippets, extended data tables, or additional diagrams can be placed here.
-%
-% \end{document}
-
-
-
 \documentclass[12pt,a4paper]{report}
 \usepackage{graphicx}
 \usepackage{amsmath}
@@ -146,18 +60,51 @@
 \section{Background and Motivation}
  [Discussion of the evolution of P2P systems and their role in modern networking]
 
+The increase is the amount of Peer-to-Peer (P2P) file-sharing systems has changed digital content distribution. It's main advantage over it's traditional counterpart client-server model where a central authority manages file transfers is that P2P networks distribute this responsibility over to the peers in the network significantly increasing scalability and fault tolerance.
+
+Data consumption has had a boom in recent years and because of the limitations of the client-server architecture such as high bandwidth costs, central points of failure etc., there has been a demand for efficient, secure and scalable file-sharing mechanisms. Modern P2P networks are the perfect solution to this. They incorporate advanced networking protocols, cryptographic security, and optimisation algorithms to enhance their performance and security. Enhanced scalability is achieved by distributing the file storage and transfer responsibilities among the peers in the network. This reduces the load on individual nodes and improves the overall efficiency of the system. Data redundancy and availability are also improved by storing multiple copies of the file across the network. These two are very strong points for P2P networks and any data distribution system would benefit from these features.
+
+P2P networks have wider applications beyond just simple file-sharing. It's applications range from content distribution networks (CDNs) to blockchains and distributed cloud computing. There are also significant challenges in this approach. Some of them being data security, peer reliability and performance bottlenecks. This project aims to address some of these challenges by designing and implementing a secure, scalable and fault-tolerant P2P file-sharing system.
+
+
 \section{Project Objectives}
  [Clear enumeration of project goals and success criteria]
+
+The main objective of this project is to design and implement a robust and scalable P2P file-sharing system that addresses key challenges in scalability, fault tolerance, and security. The system will be evaluated based on the following criteria:
+
+\begin{itemize}
+	\item Develop a decentralised file-sharing system: The system should be able to handle a large number of peers and files while maintaining performance.
+	\item Fault Tolerance: The system should be resilient to peer failures and network disruptions, ensuring reliable file transfers.
+	\item Security: The system should implement secure communication protocols and data encryption to protect user data.
+	\item Performance: The system should provide efficient file transfer mechanisms and low latency for peer interactions.
+	\item Implement secure encryption mechanisms to safeguard data integrity.
+\end{itemize}
+
+\section{Evaluation Criteria}
+ [Description of the metrics and methods used to evaluate the system]
+
+\begin{itemize}
+	\item System Performance: The system's performance will be evaluated it terms of latency, download speeds, system response and throughput efficiency under various network conditions.
+	\item Scalability: The system's ability to handle increasing numbers of simultaneous connections and file-sharing requests without performance degradation.
+	\item Fault Tolerance: Evaluation of the system's resilience to peer failures and disconnections, network disruptions, and data corruption.
+	\item Security: Effefctiveness of the implemented encryption algorithms, peer authentication mechanisms and safeguards against malicious attacks.
+	\item Resource Utilization: The system's resource consumption in terms of CPU, memory, and network bandwidth. How efficient the system is in using bandwidth and system resources.
+\end{itemize}
+
+By evaluating the system based on these criteria, we can determine the effectiveness of the implemented features and the overall performance of the P2P file-sharing system. This project will hopefully also contribute to the advancement and highlight the importance of decentralized technologies.
 
 \section{Problem Statement}
  [Detailed description of the challenges in P2P file sharing]
 
 \section{Project Scope}
  [Outline of what the project encompasses and its boundaries]
+Peer-to-peer file sharing is the distribuition
 
 \chapter{Literature Review}
 \section{History of P2P Systems}
  [Evolution of P2P architectures and protocols]
+
+At the start, file-sharing was exclusively done by client-server
 
 \section{BitTorrent Protocol Analysis}
  [Detailed examination of BitTorrent's approach]
