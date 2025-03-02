@@ -2,6 +2,7 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{hyperref}
+\usepackage{url}
 \usepackage{listings}
 \usepackage{color}
 \usepackage{float}
@@ -91,7 +92,8 @@ The main objective of this project is to design and implement a robust and scala
 	\item Resource Utilization: The system's resource consumption in terms of CPU, memory, and network bandwidth. How efficient the system is in using bandwidth and system resources.
 \end{itemize}
 
-By evaluating the system based on these criteria, we can determine the effectiveness of the implemented features and the overall performance of the P2P file-sharing system. This project will hopefully also contribute to the advancement and highlight the importance of decentralized technologies.
+By evaluating the system based on these criteria, we can determine the effectiveness of the implemented features and the overall performance of the P2P file-sharing system.
+This project will hopefully also contribute to the advancement and highlight the importance of decentralized technologies.
 
 \section{Problem Statement}
  [Detailed description of the challenges in P2P file sharing]
@@ -104,10 +106,31 @@ Peer-to-peer file sharing is the distribuition
 \section{History of P2P Systems}
  [Evolution of P2P architectures and protocols]
 
-At the start, file-sharing was exclusively done by client-server
+% At the start, file-sharing was exclusively done by client-server architecture via websites and FTP servers.
+% This was a very inefficient way of sharing files as it was slow and expensive. The introduction of P2P networks changed this.
+% P2P networks are decentralised and distribute the file-sharing responsibilities among the peers in the network.
+% This significantly increased the scalability and fault tolerance of the system. The first P2P network was Napster
+% which was a centralised P2P network. This was followed by Gnutella which was a decentralised P2P network.
+% BitTorrent was the next big thing in P2P networks. It introduced a new way of file-sharing by breaking the files
+% into smaller chunks and sharing them among the peers. This significantly increased the efficiency, scalability and reliability
+% of the system. Modern P2P networks have incorporated advanced networking protocols, cryptographic security, and optimisation
+% algorithms to enhance their performance and security.
+
+Early peer-to-peer (P2P) file sharing systems showed up in the late 1990s and evolevd rapidly throught the 2000s. Everything started with Napster (1999), created by Shawn Fanning, that allowed users to share music files (MP3) \cite{wikipedia-p2p}. Napster used a centralised server to index available files while the actual file transfers were done directly between user computers (peers). This centralised index made Napster easy to use and very popular. At its peak, Napster had 80 million registered users \cite{wikipedia-napster} which also became its downfall as it was down in 2001 for copyright infringement.
+
+Following Napster, Gnutella was released in 2000 as the very first fully decentralised P2P file sharing network. With Gnutella, the centralised index server was gone; instead, each peer acted equally as a client and a server. The file requests were broadcasted to all peers. At the start, this was great for reliability. However, scaling became a problem as the network grew as flooding each query to all peers caused high overhead and slow searching. Around the same time, other systems like FastTrack (Kazaa, 2001) which became the most popular P2P protocol at the time, used supernodes as indexes to improve scalability. These supernodes were a subset of peers with high-bandwidth that acted as a proxy for other peers \cite{wikipedia-fasttrack}. This combined the central index's efficiency with a decentralised system for actual file transfers. This reduced the overhead of flooding queries to all peers. Similarly, eDonkey2000 (2000) relied on multiple servers for indices, and it's later client eMule (2002) implemented a Kademlia distributed hash table (Kad network) to enable serverless operation.
+
+By the early 2000s,P2P networks had many versions. Some with unstructured networks like Gnutella, structured networks with distributed indices, and hybrid models. The early success and failure of Napster allowed for new P2P file-sharing networks and their software client counterparts \cite{early-2000s-p2p-state}. Since the newer P2P systems don't rely on any central server by using a Distributed Hash Table (DHT), it is much harder for law enforcements to shut it down. The concept of P2P networks has been around for long time. The fundamental Internet Protocols like TCP/IP with its applications in FTP, HTTP, etc. are all based on host-to-host communication where all hosts can request data from all other hosts \cite{early-2000s-p2p-state}. P2P networks are an evolution/extention of these principles, building application-level networks on top of the Internet that directly connect users to each other to freely share any kind of data.
+
+BitTorrent was the biggest milestone in P2P network history, introduced by Bram Cohen in 2001. BitTorrent's totally new and innovative approach to file sharing - discussed in more detail in the next section - immensely improved scalability and efficiency for distributing large files. By utilising swarms of users to concurrently download and upload pieces of a file, BitTorrent was able to reduce the load on individual peers and increase the overall speed of file transfers. This made BitTorrent the most dominant P2P file sharing protocol by the mid-2000s and is still the most popular P2P protocol today \cite{BitTorrent-most-popular}. To summarise, the evolution of P2P file sharing moved from a central index model like Napster, to a purely decentralised but inefficient model like Gnutella, to hybrid and structured network like FastTrack and eDonkey2000, and finally ending up in the efficient and scalable BitTorrent model. These advancements in P2P technology were driven by the need for a lack of central bottlenecks, improved discovery and download speeds and increase reliability (robutness) of the file sharing networks agains failures and legal threats.
+
 
 \section{BitTorrent Protocol Analysis}
  [Detailed examination of BitTorrent's approach]
+
+BitTorrent is a peer-to-peer protocol designed for efficient distribution of large files by utilising swarms (the collective group of peers sharing a particular file) to download and upload pieces of the file concurrently. Under the hood, BitTorrent breaks each file into many small pieces called chunks and distributes them among the peers in a swarm, so all participants can download and exchange different pieces with each other simultaneously \cite{BitTorrent-spec}. A user requires a torrent descriptor file (.torrent) or a magne link, which contains metadata including a unique info-has identifies for the content and optionally addresses of tracker servers - coordinatin servers that help peers fine each other \cite{BitTorrent-spec}. When any BitTorrent client loads this metadata, it joins the swarm by contacting the tracker server or using a Distributed Hash Table (DHT) to discover other peers. Peers in the swarm that have the complete files are called seeders, while those that are still downloading are called leechers or just peers. When the leecher downloads any piece, it begins to upload that piece to others immediately after, contributing to the swarm. This design means that the content distribution load is shared among all peers, and the more peers there are, the faster the download speed can be. With enough peers, a file's original source only needs to provide one full copy, after which the swarm can continue to share the file without the original source's involvement. This decentralised sharing content makes BitTorrent highly scalable.
+
+In a BitTorrent network, at the start, file pieces are downloaded in a strategic order using the \textit{rarest-first}. Peers prioritise requesting pieces that are rarest in the swarm (pieces that fewest other peers have), making those pieces more widely replicated early to ensure availability.
 
 \section{Modern P2P Applications}
  [Survey of current P2P implementations]
@@ -198,9 +221,6 @@ At the start, file-sharing was exclusively done by client-server
 \section{Final Reflections}
  [Concluding thoughts]
 
-\bibliographystyle{ieeetr}
-\bibliography{references}
-
 \appendix
 \chapter{Code Listings}
 \section{Core Components}
@@ -219,6 +239,13 @@ type Tracker struct {
 
 \chapter{User Manual}
  [System usage instructions]
+
+\renewcommand\bibname{References}
+\begin{raggedright} % Prevents justification issues
+	\bibliographystyle{unsrturl}
+	\bibliography{references}
+\end{raggedright}
+
 
 
 \end{document}
