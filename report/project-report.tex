@@ -1,4 +1,5 @@
 \documentclass[12pt,a4paper]{report}
+\usepackage{listings}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{hyperref}
@@ -7,6 +8,7 @@
 \usepackage{color}
 \usepackage{float}
 \usepackage{booktabs}
+\usepackage{xcolor}
 
 % Code listing settings
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -34,6 +36,21 @@
 }
 
 \lstset{style=mystyle}
+
+\usepackage{xcolor}
+
+% Define inline code styling
+\lstdefinestyle{inlineCode}{
+    backgroundcolor=\color{backcolour},
+    basicstyle=\ttfamily\small,
+    frame=single,
+    breaklines=true,
+    columns=flexible
+}
+
+% Define custom inline code command
+\newcommand{\code}[1]{\lstinline[style=inlineCode]!#1!}
+
 
 \title{Peer-to-Peer File Sharing System:\\A Robust and Scalable Implementation}
 \author{Yugal Khanal\\2302704}
@@ -104,18 +121,6 @@ Peer-to-peer file sharing is the distribuition
 
 \chapter{Literature Review}
 \section{History of P2P Systems}
- [Evolution of P2P architectures and protocols]
-
-% At the start, file-sharing was exclusively done by client-server architecture via websites and FTP servers.
-% This was a very inefficient way of sharing files as it was slow and expensive. The introduction of P2P networks changed this.
-% P2P networks are decentralised and distribute the file-sharing responsibilities among the peers in the network.
-% This significantly increased the scalability and fault tolerance of the system. The first P2P network was Napster
-% which was a centralised P2P network. This was followed by Gnutella which was a decentralised P2P network.
-% BitTorrent was the next big thing in P2P networks. It introduced a new way of file-sharing by breaking the files
-% into smaller chunks and sharing them among the peers. This significantly increased the efficiency, scalability and reliability
-% of the system. Modern P2P networks have incorporated advanced networking protocols, cryptographic security, and optimisation
-% algorithms to enhance their performance and security.
-
 Early peer-to-peer (P2P) file sharing systems showed up in the late 1990s and evolevd rapidly throught the 2000s. Everything started with Napster (1999), created by Shawn Fanning, that allowed users to share music files (MP3) \cite{wikipedia-p2p}. Napster used a centralised server to index available files while the actual file transfers were done directly between user computers (peers). This centralised index made Napster easy to use and very popular. At its peak, Napster had 80 million registered users \cite{wikipedia-napster} which also became its downfall as it was down in 2001 for copyright infringement.
 
 Following Napster, Gnutella was released in 2000 as the very first fully decentralised P2P file sharing network. With Gnutella, the centralised index server was gone; instead, each peer acted equally as a client and a server. The file requests were broadcasted to all peers. At the start, this was great for reliability. However, scaling became a problem as the network grew as flooding each query to all peers caused high overhead and slow searching. Around the same time, other systems like FastTrack (Kazaa, 2001) which became the most popular P2P protocol at the time, used supernodes as indexes to improve scalability. These supernodes were a subset of peers with high-bandwidth that acted as a proxy for other peers \cite{wikipedia-fasttrack}. This combined the central index's efficiency with a decentralised system for actual file transfers. This reduced the overhead of flooding queries to all peers. Similarly, eDonkey2000 (2000) relied on multiple servers for indices, and it's later client eMule (2002) implemented a Kademlia distributed hash table (Kad network) to enable serverless operation.
@@ -126,14 +131,22 @@ BitTorrent was the biggest milestone in P2P network history, introduced by Bram 
 
 
 \section{BitTorrent Protocol Analysis}
- [Detailed examination of BitTorrent's approach]
+BitTorrent is a peer-to-peer protocol designed for efficient distribution of large files by utilising swarms (the collective group of peers sharing a particular file) to download and upload pieces of the file concurrently. Under the hood, BitTorrent breaks each file into many small pieces called chunks and distributes them among the peers in a swarm, so all participants can download and exchange different pieces with each other simultaneously \cite{bep_0003}. A user requires a torrent descriptor file (.torrent) or a magne link, which contains metadata including a unique info-has identifies for the content and optionally addresses of tracker servers - coordinatin servers that help peers fine each other \cite{bep_0003}. When any BitTorrent client loads this metadata, it joins the swarm by contacting the tracker server or using a Distributed Hash Table (DHT) to discover other peers. Peers in the swarm that have the complete files are called seeders, while those that are still downloading are called leechers or just peers. When the leecher downloads any piece, it begins to upload that piece to others immediately after, contributing to the swarm. This design means that the content distribution load is shared among all peers, and the more peers there are, the faster the download speed can be. With enough peers, a file's original source only needs to provide one full copy, after which the swarm can continue to share the file without the original source's involvement. This decentralised sharing content makes BitTorrent highly scalable.
 
-BitTorrent is a peer-to-peer protocol designed for efficient distribution of large files by utilising swarms (the collective group of peers sharing a particular file) to download and upload pieces of the file concurrently. Under the hood, BitTorrent breaks each file into many small pieces called chunks and distributes them among the peers in a swarm, so all participants can download and exchange different pieces with each other simultaneously \cite{BitTorrent-spec}. A user requires a torrent descriptor file (.torrent) or a magne link, which contains metadata including a unique info-has identifies for the content and optionally addresses of tracker servers - coordinatin servers that help peers fine each other \cite{BitTorrent-spec}. When any BitTorrent client loads this metadata, it joins the swarm by contacting the tracker server or using a Distributed Hash Table (DHT) to discover other peers. Peers in the swarm that have the complete files are called seeders, while those that are still downloading are called leechers or just peers. When the leecher downloads any piece, it begins to upload that piece to others immediately after, contributing to the swarm. This design means that the content distribution load is shared among all peers, and the more peers there are, the faster the download speed can be. With enough peers, a file's original source only needs to provide one full copy, after which the swarm can continue to share the file without the original source's involvement. This decentralised sharing content makes BitTorrent highly scalable.
+In a BitTorrent network, at the start, file pieces are downloaded in a strategic order using the \textit{rarest-first}. Peers prioritise requesting pieces that are rarest in the swarm (pieces that fewest other peers have), making those pieces more widely replicated early to ensure availability. This strategy ensures that no single piece/peer becomes a bottleneck in the swarm. BitTorrent also implements a tit-for-tat inspired choking algorithm to encourage cooperation and as it's incentive mechanism. In practice, each client monitors its other peers' upload/download rates and "chokes" (temporarily stops sending data to, downloading can still take place) peers that are not sharing, which unchoking peers that do send data \cite{choking}. Consequently, a peer that uploads more is allowed to download more from others. This leads to faster overall performace for peers that share. This tit-for-tat mechanism is crucial in discouraging free-riders and keeps the swarm healthy. BitTorrent also uses \textit{optimistic unchoking} to randomly unchoke some connections, allowing new and temporarily idle peers to gain pieces \cite{choking}. This also gives a chance to previously choked peers to state that they are willing to share. Because there is no central scheduler, each peer automatically maximises its own download rate by selectively uploading to partners that reciprocate. Doing this also stabilises the download speed, giving peers a consistent download rate.
 
-In a BitTorrent network, at the start, file pieces are downloaded in a strategic order using the \textit{rarest-first}. Peers prioritise requesting pieces that are rarest in the swarm (pieces that fewest other peers have), making those pieces more widely replicated early to ensure availability.
+BitTorrent's swarming approach of downloading pieces from multiple peers in parallel means that the collective bandwidth of the swarm increases as more peers join, greatly improving download efficiency. To put it simply, the swarm's average throughput scales with the number of peers - a sharp contrast and advantage to traditional client-server downloads limited by a server's capacity.
+
+Initially, BitTorrent relied on centralised servers/trackers for peer discovery, but this presented reliability and availability risks (if a tracker went offline, the swarm could become unreachable). To address this, a \textbf{Distributed Hash Table (DHT)} system was introduced (BitTorrent Enhancement Protocol (BEP) 5) to decentralise peer discovery. The DHT is composed of nodes and stores the location of peers. BitTorrent clients include a DHT node, which is used to contact other nodes in the DHT to get the location of peers to download from using the BitTorrent protocol \cite{bep_0005}. The DHT is based on the Kademlia algorithm. In Kademlia, the distance metric is XOR and the result is interpreted as an unsigned integer. distance(A, B) = $|\text{A xor B}|$ smaller values are closer. The distance metric is used to compare two node IDs or a node ID and an infohash for "closeness" \cite{bep_0005}. Peers publish and retrieve torrent swarm information on the DHT by using the torrent's infohash as the key. To find peers for a torrent, a node performs \texttt{get\_peers} query on the DHT with the infohash. The DHT nodes responsible for that key will respond with a list of IP and ports for peers in the swarm. For any peer joining the swarm, the peer uses \texttt{announce\_peer} along with the torrent infohash to announce its presence to the DHT so other nodes can find it \cite{bep_0005}. This way the DHT functions as a decentralised "tracker", allowing peers to find each other without any central server.
+
+In addition to the DHT, BitTorrent also utilises \textbf{Peer Exchange (PEX)} and \textbf{Local Peer Discovery (LDP)} to further improve peer discovery. PEX is an alternative peer discovery mechanish for swarms once peers have bootstrapped via other mechanishms such as DHT \cite{bep_0011}. PEX allows peers to directly exchange peer lists with each other, enabling them to discover new peers quickly without needing a tracker or DHT. LDP allows peers on the same local network (on the same LAN) to discover each other using multicast (http over udp-multicast) \cite{bep_0014}. It's aim is to minimise the traffic through the ISP's channel use the higher LAN bandwidth instead. Together with the DHT, PEX and LDP provide a robust and decentralised peer discovery mechanism for BitTorrent.
+
+Through the combination of efficient piece distribution, tit-for-tat incentive mechanism (choking/unchoking), and multiple peer discovery methods, BitTorrent achieves both very high performance and reliability. BitTorrent remains the most widely used P2P protocol today having inspired many other distributed systems.
 
 \section{Modern P2P Applications}
  [Survey of current P2P implementations]
+
+
 
 \section{Security Challenges in P2P Networks}
  [Analysis of security considerations]
