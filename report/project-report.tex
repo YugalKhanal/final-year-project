@@ -76,8 +76,6 @@
 
 \chapter{Introduction}
 \section{Background and Motivation}
- [Discussion of the evolution of P2P systems and their role in modern networking]
-
 The increase is the amount of Peer-to-Peer (P2P) file-sharing systems has changed digital content distribution. It's main advantage over it's traditional counterpart client-server model where a central authority manages file transfers is that P2P networks distribute this responsibility over to the peers in the network significantly increasing scalability and fault tolerance.
 
 Data consumption has had a boom in recent years and because of the limitations of the client-server architecture such as high bandwidth costs, central points of failure etc., there has been a demand for efficient, secure and scalable file-sharing mechanisms. Modern P2P networks are the perfect solution to this. They incorporate advanced networking protocols, cryptographic security, and optimisation algorithms to enhance their performance and security. Enhanced scalability is achieved by distributing the file storage and transfer responsibilities among the peers in the network. This reduces the load on individual nodes and improves the overall efficiency of the system. Data redundancy and availability are also improved by storing multiple copies of the file across the network. These two are very strong points for P2P networks and any data distribution system would benefit from these features.
@@ -215,6 +213,67 @@ type FileServer struct {
 	activeFilesMu    sync.RWMutex
 	udpPeers         map[string]bool
 	udpPeersMu       sync.RWMutex
+}
+\end{lstlisting}
+
+% type FileServerOpts struct {
+% 		ListenAddr        string
+% 		EncKey            []byte
+% 		StorageRoot       string
+% 		PathTransformFunc func(string) PathKey
+% 		Transport         p2p.Transport
+% 		TrackerAddr       string
+% 		BootstrapNodes    []string
+% 	}
+
+
+The \texttt{opts} stores file server options
+The \texttt{FileServer} maintains connection with the available peers via the \texttt{peers}, that stores peer addresses and peer connections as key-value pairs. It uses \texttt{store} for local file storage and management.
+It keeps track of files that are actively being shared with the \texttt{activeFiles} map. This allows it to quickly determine if it has the particular chunk requested by a peer.
+
+The \texttt{responseHandlers} slice contains callback functions that are responsible for handling different types of peer messages for ongoing downloads.
+
+The \texttt{FileServer} maintains a different peer map \texttt{udpPeers} for tracking UDP-capable peers. Major reasons for this inclusion are for Network Address Translation-Traversal (NAT-T; more on it later) and generally higher speed transfers compared to TCP. This way it can prioritise faster UDP transfers when possible, falling back to TCP for larger transfers or for peers that do not support UDP.
+
+Some of the key operations the \texttt{FileServer} provides are:
+\begin{itemize}
+	\item \textbf{ShareFile:} Makes a local file available for peers to download.
+	\item \textbf{DownloadFile:} Initiates the file download from peers in the network.
+	\item \textbf{handleChunkRequest:} Responds to file chunk requests from peers in the network.
+	\item \textbf{downloadChunk:} Retrieves a specific chunk from available peers.
+\end{itemize}
+
+The most important part of the \texttt{FileServer} is how it facilitates sharing and especially the download process. It implements a sophisticated download mechanism that can download different chunks from different peers maximising throughput which is co-ordinated by the \texttt{Piece Manager}.
+
+\subsection{Transport Layer}
+The system implements a dual-protocol transport system with both TCP and UDP. The TCP implementation was mostly taken from an already well established project on GitHub called \texttt{foreverstore} \cite{anthdm-foreverstore}. UDP transport implementation was also inspired by \texttt{foreverstore}. The transport layer abstracts the communication details from the higher level components.
+
+The \texttt{TCPTransport} structure in \texttt{tcp\_transport.go} ensures reliable TCP connections between peers:
+
+\begin{lstlisting}[language=Go, caption=Transport Implementation]
+type TCPTransport struct {
+	TCPTransportOpts
+	listener net.Listener
+	rpcch    chan RPC
+}
+\end{lstlisting}
+
+The \texttt{UDPTransport} structure in \texttt{udp\_transport.go} implements UDP with, although incomplete, support for NAT-Traversal.
+
+\begin{lstlisting}[language=Go, caption=Transport Implementation]
+type UDPTransport struct {
+	ListenAddr          string
+	udpConn             *net.UDPConn
+	rpcch               chan RPC
+	connectedCh         chan string
+	udpPeers            sync.Map
+	udpDataCh           chan UDPDataPacket
+	udpResponseHandlers sync.Map
+	udpRequestsMu       sync.Mutex
+	udpRequests         map[string]UDPRequest
+	OnPeer              func(Peer) error
+	OnUDPPeer           func(string)
+	OnUDPDataRequest    func(string, int) ([]byte, error)
 }
 \end{lstlisting}
 
