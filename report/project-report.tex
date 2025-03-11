@@ -149,18 +149,76 @@ Although P2P technology began with file sharing, today it is used in a diverse a
 Decentralised data storage and content distribution is another area where P2P networks are used. IPFS (InterPlanetary File System) is a notable example of modern P2P protocol for distributed file storage. It's a protocol and network designed to create a content-addressable, peer-to-peer method of storing and sharing hypermedia in a distributed file system \cite{IPFS}. It forms a global, decentralised file system in which content is addressed by a unique hash. Upon a request for content, the IPFS network uses a DHT to locate peers that have the content and retrieves it from the fastest available sources. This approach allows content to be shared across multiple nodes, making content delivery efficient and reliable (files remain available even if some nodes disconnect, just like in BitTorrent). Many newer applications, especially Web3 applications, leverage IPFS or similar P2P protocols for content distribution without relying on a central server.
 
 From file-sharing to cryptocurrencies and decentralised storage, modern P2P networks demonstrate the versatility and power of decentralised systems. By removing central servers, these applications gain fault-tolerance, increased performance and availability. The principles of P2P networking have been applied to a wide range of applications, and the technology continues to evolve with new use cases and innovations.
-\section{Security Challenges in P2P Networks}
-Along with the various advantages of P2P networks, they also present significant security and privacy challenges.
 
-\section{Distributed Hash Tables and Peer Discovery}
- [Review of peer discovery mechanisms]
+\section{Security Challenges in P2P Networks}
+Along with the various advantages of P2P networks, they also present significant security and privacy challenges. It's decentralised nature and direct peer-to-peer communication makes enforcing security policies and protecting users more difficult compared to traditional centralisd systems.
+
+\textbf{Privacy and Anonymity} is the primary challenge. In P2P networks, peers' IP addresses are exposed to others in the newtork, meaning user activiy can be monitored. True anonymity is difficult to achieve in P2P networks, as the IP addresses of peers must be published in order to connect and exchange data. This makes it easy for organisations to join swarms to log peer IP addresses and ban those IPs from joining P2P newtorks. Users can use VPNs or other IP masking techniques to hide their true IP address, but this merely shifts the trust to the VPN provider and is not foolproof. As a result, traditional P2P networks offer little built-in anonymity. Some specalised networks emerged to address this issue, like I2P, Freenet, and Tor etc. These networks route traffic through multiple nodes to obfuscate the source and destination of data, providing a higher level of privacy and anonymity. However, they trade off efficiency and are not widely adopted for general file sharing.
+
+\textbf{Malware and Content Integrity} is another major concern. P2P networks are often used to distribute pirated content, which can be a vector for malware. Malicious users can upload malware disguised as legitimate files with no party checking it for authenticity. Users can unknowingly download these files and install malware thinking it is a legitimate file. P2P networks can become a breeding ground for trojans and viruses because of the ease of injection. Attacker can also flood the networks with fake or corrupted files due to the lack of verification \cite{security} \textbf{RECHECK THISSSSSSSSSSSSSSS}.
 
 \chapter{System Architecture}
 \section{High-Level Design}
- [System overview with architectural diagrams]
+
+This P2P file sharing system implements a hybrid architecture that combines \textbf{centralised tracking} for peer discovery with \textbf{decentralised file transfer} among peers. This design provides the scalability benefits of distributed systems while maintaining efficient peer discovery through a central coordinator. At a high level, the system consists of the following core components:
+
+\begin{itemize}
+	\item \textbf{Tracker Server:} A centralized coordinator that maintains file metadata and peer information, facilitating peer discovery.
+	\item \textbf{File Server:} The peer node that handles file sharing, downloading, and storage management.
+	\item \textbf{Transport Layer:} Implements both TCP and UDP protocols for reliable file transfer and NAT traversal.
+	\item \textbf{Piece Manager:} Manages the downloading of file chunks, implementing strategies for efficient parallel downloads.
+	\item \textbf{Storage System:} Handles file chunking, verification, and storage.
+\end{itemize}
+
+File transfers are inspired by BitTorrent's approach, where files are divided into chunks, allowing for parallel downloading from multiple peers simultaneously. Each chunk is hashed and verified to maintain data integrity. The combination of all core components ensures a robust and scalable file-sharing experience for users.
 
 \section{Component Overview}
  [Detailed description of system components]
+\subsection{Tracker Server}
+The Tracker serves as the central coordination point for the P2P networks. This acts as an index for all files available in the network and maintains a list of peers that are actively sharing those files. However, the tracker doesn't participate in the actual file transfer and only helps discover available files along with their respective peers.
+
+\begin{lstlisting}[language=Go, caption=Tracker Implementation]
+// Tracker stores metadata and peer information for each file
+type Tracker struct {
+	fileIndex    map[string]*FileInfo       //file metadata
+	peerIndex    map[string]map[string]bool //peer addresses
+	peerLastSeen map[string]time.Time       //last heartbeat
+	mu           sync.RWMutex
+}
+\end{lstlisting}
+
+From the tracker implementation, we can see it consists of various important data structures. The \texttt{fileIndex} maps file IDs to \texttt{FileInfo} structure which contains metadata about each file, such as name, size, chunk information, etc. This metadata is necessary for peers to download and reconstruct the file. The \texttt{peerIndex} is a map of file IDs with sets of peer addresses that are sharing that file. This enables the tracker to quickly find peers sharing a particular file and provide their addresses to requesting peers. The \texttt{peerLastSeen} map tracks when each peer was last active in the network, allowing the tracker to clean up inactive peers and maintain an up-to-date list of active peers. The tracker also includes a \texttt{sync.RWMutex} to handle concurrent read and write operations on the data structures.
+
+The Tracker server exposes some useful HTTP endpoints for peers to interact with:
+\begin{itemize}
+	\item \textbf{/announce:} Allows peers to announce their presence and the files they are sharing.
+	\item \textbf{/peers:} Returns a list of peers sharing the requested file.
+	\item \textbf{/metadata:} Returns metadata about the requested file.
+	\item \textbf{/heartbeat:} Allows peers to signal they are still alive.
+	\item \textbf{/remove:} Allows peers to signal they've stopped sharing a file and remove themselves from the network.
+\end{itemize}
+
+The Tracker also implements a periodic cleanup mechanism to remove inactive peers from its indices, ensuring that peers attempting to download files are only directed to active and available peers.
+
+\subsection{File Server}
+The FileServer component represents a peer node in the P2P network and is responsible for sharing files with other peers and downloading from them. The implementation in \texttt{server.go} shows a complex struct that handles multiple responsibilities.
+
+\begin{lstlisting}[language=Go, caption=File Server Implementation]
+type FileServer struct {
+	opts             FileServerOpts
+	peers            map[string]p2p.Peer
+	store            *Store
+	quitch           chan struct{}
+	mu               sync.RWMutex
+	responseHandlers []func(p2p.Message)
+	activeFiles      map[string]*shared.Metadata
+	activeFilesMu    sync.RWMutex
+	udpPeers         map[string]bool
+	udpPeersMu       sync.RWMutex
+}
+\end{lstlisting}
+
+
 
 \section{Network Protocol Design}
  [Protocol specifications and communication patterns]
