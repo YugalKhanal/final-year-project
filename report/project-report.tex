@@ -155,221 +155,160 @@ Along with the various advantages of P2P networks, they also present significant
 
 \textbf{Malware and Content Integrity} is another major concern. P2P networks are often used to distribute pirated content, which can be a vector for malware. Malicious users can upload malware disguised as legitimate files with no party checking it for authenticity. Users can unknowingly download these files and install malware thinking it is a legitimate file. P2P networks can become a breeding ground for trojans and viruses because of the ease of injection. Attacker can also flood the networks with fake or corrupted files due to the lack of verification \cite{security} \textbf{RECHECK THISSSSSSSSSSSSSSS}.
 
-\chapter{System Architecture}
-\section{High-Level Design}
+\chapter{System Design and Implementation}
+\section{Architecture Overview}
+% High-level design and key components
+% Design principles and patterns
+% Development environment (VMs, networking setup, etc.)
 
 This P2P file sharing system implements a hybrid architecture that combines \textbf{centralised tracking} for peer discovery with \textbf{decentralised file transfer} among peers. This design provides the scalability benefits of distributed systems while maintaining efficient peer discovery through a central coordinator. At a high level, the system consists of the following core components:
 
 \begin{itemize}
-	\item \textbf{Tracker Server:} A centralized coordinator that maintains file metadata and peer information, facilitating peer discovery.
-	\item \textbf{File Server:} The peer node that handles file sharing, downloading, and storage management.
-	\item \textbf{Transport Layer:} Implements both TCP and UDP protocols for reliable file transfer and NAT traversal.
-	\item \textbf{Piece Manager:} Manages the downloading of file chunks, implementing strategies for efficient parallel downloads.
-	\item \textbf{Storage System:} Handles file chunking, verification, and storage.
+	\item \textbf{Tracker:} A lightweight centralised server that maintains metadata about files and coordinates peer discovery. The tracker does not store any file content and does not participate in file transfers, only facilitating peer connections.
+	\item \textbf{File Server:} The core component of the system running on each peer that handles file storage, chunking, storage and downloading. It implements BitTorrent inspired piece management and chunking strategies for efficient file transfers.
+	\item \textbf{Transport Layer:} A dual protocol system that supports both TCP and UDP for optimal file transfers and NAT traversal.
+	\item \textbf{Storage System:} Manages the persistent storage of file chunks and metadata on disk. Maintains data integrity and verification mechanisms along with content addressing and file reconstruction.
+	\item \textbf{Piece Manager:} Coordinates the parallel downloading and verification of individual file chunks using a variety of piece selection strategies for optimal performance.
 \end{itemize}
 
 File transfers are inspired by BitTorrent's approach, where files are divided into chunks, allowing for parallel downloading from multiple peers simultaneously. Each chunk is hashed and verified to maintain data integrity. The combination of all core components ensures a robust and scalable file-sharing experience for users.
 
-\section{Component Overview}
- [Detailed description of system components]
-\subsection{Tracker Server}
-The Tracker serves as the central coordination point for the P2P networks. This acts as an index for all files available in the network and maintains a list of peers that are actively sharing those files. However, the tracker doesn't participate in the actual file transfer and only helps discover available files along with their respective peers.
-
-\begin{lstlisting}[language=Go, caption=Tracker Implementation]
-// Tracker stores metadata and peer information for each file
-type Tracker struct {
-	fileIndex    map[string]*FileInfo       //file metadata
-	peerIndex    map[string]map[string]bool //peer addresses
-	peerLastSeen map[string]time.Time       //last heartbeat
-	mu           sync.RWMutex
-}
-\end{lstlisting}
-
-From the tracker implementation, we can see it consists of various important data structures. The \texttt{fileIndex} maps file IDs to \texttt{FileInfo} structure which contains metadata about each file, such as name, size, chunk information, etc. This metadata is necessary for peers to download and reconstruct the file. The \texttt{peerIndex} is a map of file IDs with sets of peer addresses that are sharing that file. This enables the tracker to quickly find peers sharing a particular file and provide their addresses to requesting peers. The \texttt{peerLastSeen} map tracks when each peer was last active in the network, allowing the tracker to clean up inactive peers and maintain an up-to-date list of active peers. The tracker also includes a \texttt{sync.RWMutex} to handle concurrent read and write operations on the data structures.
-
-The Tracker server exposes some useful HTTP endpoints for peers to interact with:
+Certain design principles and patterns dictated the system's architecture:
 \begin{itemize}
-	\item \textbf{/announce:} Allows peers to announce their presence and the files they are sharing.
-	\item \textbf{/peers:} Returns a list of peers sharing the requested file.
-	\item \textbf{/metadata:} Returns metadata about the requested file.
-	\item \textbf{/heartbeat:} Allows peers to signal they are still alive.
-	\item \textbf{/remove:} Allows peers to signal they've stopped sharing a file and remove themselves from the network.
+	\item \textbf{Fault Tolerance:} The system is designed to be resilient to peer failures and network disruptions. The system can handle peer disconnections, network failures, and data corruption gracefully through techniques like retry logic, error recovery, and peer connection strategies.
+	\item \textbf{Scalability:} By distributing file storage and transfer responsibilities among peers themselves, the system can scale to handle many simultaneous users and large files with no central bottleneck.
+	\item \textbf{Performance Optimisation:} The system includes optimisations like parallel downloads, piece prioritisation (rarest first), etc. to maximise file transfer speeds.
+	\item \textbf{Protocol Flexibility:} The dual TCP and UDP transport layer allows the system to adapt to different network conditions when NAT traversal is required.
+	\item \textbf{Data Integrity:} Hashing and verification mechanisms are implemented to ensure that file chunks are not corrupted during transfer and tampered with.
 \end{itemize}
 
-The Tracker also implements a periodic cleanup mechanism to remove inactive peers from its indices, ensuring that peers attempting to download files are only directed to active and available peers.
-
-\subsection{File Server}
-The FileServer component represents a peer node in the P2P network and is responsible for sharing files with other peers and downloading from them. The implementation in \texttt{server.go} shows a complex struct that handles multiple responsibilities.
-
-\begin{lstlisting}[language=Go, caption=File Server Implementation]
-type FileServer struct {
-	opts             FileServerOpts
-	peers            map[string]p2p.Peer
-	store            *Store
-	quitch           chan struct{}
-	mu               sync.RWMutex
-	responseHandlers []func(p2p.Message)
-	activeFiles      map[string]*shared.Metadata
-	activeFilesMu    sync.RWMutex
-	udpPeers         map[string]bool
-	udpPeersMu       sync.RWMutex
-}
-\end{lstlisting}
-
-% type FileServerOpts struct {
-% 		ListenAddr        string
-% 		EncKey            []byte
-% 		StorageRoot       string
-% 		PathTransformFunc func(string) PathKey
-% 		Transport         p2p.Transport
-% 		TrackerAddr       string
-% 		BootstrapNodes    []string
-% 	}
-
-
-The \texttt{opts} stores file server options
-The \texttt{FileServer} maintains connection with the available peers via the \texttt{peers}, that stores peer addresses and peer connections as key-value pairs. It uses \texttt{store} for local file storage and management.
-It keeps track of files that are actively being shared with the \texttt{activeFiles} map. This allows it to quickly determine if it has the particular chunk requested by a peer.
-
-The \texttt{responseHandlers} slice contains callback functions that are responsible for handling different types of peer messages for ongoing downloads.
-
-The \texttt{FileServer} maintains a different peer map \texttt{udpPeers} for tracking UDP-capable peers. Major reasons for this inclusion are for Network Address Translation-Traversal (NAT-T; more on it later) and generally higher speed transfers compared to TCP. This way it can prioritise faster UDP transfers when possible, falling back to TCP for larger transfers or for peers that do not support UDP.
-
-Some of the key operations the \texttt{FileServer} provides are:
+The system was developed in Go (Golang), chosen for its efficiency, excellent concurrency model with goroutines and channels, strong standard networking (among others) libraries, and cross-platform compatibility. The development environment consisted of:
 \begin{itemize}
-	\item \textbf{ShareFile:} Makes a local file available for peers to download.
-	\item \textbf{DownloadFile:} Initiates the file download from peers in the network.
-	\item \textbf{handleChunkRequest:} Responds to file chunk requests from peers in the network.
-	\item \textbf{downloadChunk:} Retrieves a specific chunk from available peers.
+	\item Go 1.23 for the programming language on the local machine running NixOS(btw).
+	\item Multiple virtual machines (VMs) running Ubuntu to simulate a distributed network
+	\item Network configuration with various NAT setups to test NAT traversal
+	\item Comprehensive logging for debugging and monitoring
 \end{itemize}
 
-The most important part of the \texttt{FileServer} is how it facilitates sharing and especially the download process. It implements a sophisticated download mechanism that can download different chunks from different peers maximising throughput which is co-ordinated by the \texttt{Piece Manager}.
+\section{Tracker Component}
+% Design considerations
+% Data structures and algorithms
+% HTTP endpoints and protocol
+% Implementation challenges and solutions
 
-\subsection{Transport Layer}
-The system implements a dual-protocol transport system with both TCP and UDP. The TCP implementation was mostly taken from an already well established project on GitHub called \texttt{foreverstore} \cite{anthdm-foreverstore}. UDP transport implementation was also inspired by \texttt{foreverstore}. The transport layer abstracts the communication details from the higher level components.
+\section{File Server Component}
+% Design considerations
+% Implementation details
+% File sharing and downloading processes
+% Connection management
 
-The \texttt{TCPTransport} structure in \texttt{tcp\_transport.go} ensures reliable TCP connections between peers:
+\section{Transport Layer}
+% TCP/UDP dual protocol design
+% NAT traversal implementation
+% Protocol specifications and message formats
+% Error handling and recovery
 
-\begin{lstlisting}[language=Go, caption=Transport Implementation]
-type TCPTransport struct {
-	TCPTransportOpts
-	listener net.Listener
-	rpcch    chan RPC
-}
-\end{lstlisting}
+\section{Piece Management System}
+% Chunk selection strategies
+% Parallel download coordination
+% Implementation details
+% Performance optimizations
 
-The \texttt{UDPTransport} structure in \texttt{udp\_transport.go} implements UDP with, although incomplete, support for NAT-Traversal.
-
-\begin{lstlisting}[language=Go, caption=Transport Implementation]
-type UDPTransport struct {
-	ListenAddr          string
-	udpConn             *net.UDPConn
-	rpcch               chan RPC
-	connectedCh         chan string
-	udpPeers            sync.Map
-	udpDataCh           chan UDPDataPacket
-	udpResponseHandlers sync.Map
-	udpRequestsMu       sync.Mutex
-	udpRequests         map[string]UDPRequest
-	OnPeer              func(Peer) error
-	OnUDPPeer           func(string)
-	OnUDPDataRequest    func(string, int) ([]byte, error)
-}
-\end{lstlisting}
-
-
-
-\section{Network Protocol Design}
- [Protocol specifications and communication patterns]
-
-\section{Data Flow Architecture}
- [Data flow diagrams and explanations]
-
-\section{Storage System Design}
- [File storage and management architecture]
-
-\chapter{Implementation Details}
-\section{Tracker Implementation}
- [Details of the tracking system]
-
-\section{Peer Discovery and Management}
- [Peer handling mechanisms]
-
-\section{File Chunking and Transfer Protocol}
- [File transfer implementation details]
-
-\section{Concurrent Download Management}
- [Concurrency handling approaches]
-
-\section{Error Handling and Recovery}
- [Error management strategies]
-
-\section{Security Implementation}
- [Security measures and protocols]
+\section{Storage System}
+% File chunking design
+% Content addressing implementation
+% Metadata management
+% Verification mechanisms
 
 \chapter{Technical Challenges and Solutions}
 \section{Network NAT Traversal}
- [NAT handling implementation]
+% The NAT problem in P2P
+% UDP hole punching implementation
+% Fallback mechanisms
 
-\section{File Integrity Verification}
- [Data verification mechanisms]
-
-\section{Peer Availability Management}
- [Peer management strategies]
-
-\section{Performance Optimization}
- [Performance improvements]
+\section{Concurrent Download Management}
+% Thread safety concerns
+% Goroutine coordination
+% Bandwidth optimization
 
 \section{Fault Tolerance Implementation}
- [Fault handling approaches]
+% Handling peer disconnections
+% Chunk verification and recovery
+% Error handling strategies
+
+\section{Security Considerations}
+% Data integrity measures
+% Attack surface analysis
+% Mitigation strategies
 
 \chapter{Testing and Evaluation}
-\section{Performance Metrics}
- [Performance testing results]
+\section{Testing Methodology}
+% Test environments (VMs, network configurations)
+% Test scenarios and conditions
+% Measurement tools and techniques
+
+\section{Performance Testing}
+% Transfer speeds under various conditions
+% CPU and memory utilization
+% Network efficiency metrics
 
 \section{Scalability Testing}
- [Scalability analysis]
+% Simulation of large peer networks (~10,000 users)
+% Tracker performance under load
+% System bottlenecks and pressure points
 
-\section{Network Resilience}
- [Network testing results]
+\section{Network Resilience Testing}
+% Behavior under network disruptions
+% Recovery from peer failures
+% NAT traversal success rates
 
-\section{Security Testing}
- [Security evaluation]
+\section{Test Results and Analysis}
+% Comprehensive performance data
+% Statistical analysis
+% Comparison with objectives
 
-\section{User Experience Testing}
- [Usability assessment]
+\chapter{Critical Evaluation}
+\section{Achievements vs. Objectives}
+% Review of project goals and outcomes
+
+\section{Implementation Strengths}
+% Notable achievements
+% What worked particularly well
+% Features to be proud of
+
+\section{Implementation Weaknesses}
+% Limitations of the current system
+% Trade-offs made during development
+% What went wrong and lessons learned
+
+\section{Design Decisions Analysis}
+% What would be done differently in hindsight
+% Alternative approaches considered
+% Justification of final choices
 
 \chapter{Conclusion and Future Work}
-\section{Project Achievements}
- [Summary of accomplishments]
-
-\section{Limitations}
- [Project limitations]
+\section{Project Summary}
+% Key accomplishments and contributions
 
 \section{Future Improvements}
- [Potential enhancements]
+% IPv6 support
+% Enhanced security features
+% GUI development
+% Performance optimizations
 
 \section{Final Reflections}
- [Concluding thoughts]
+% Academic and practical significance
+% Personal development and learning
 
 \appendix
 \chapter{Code Listings}
-\section{Core Components}
-% Example code listing:
-\begin{lstlisting}[language=Go, caption=Tracker Implementation]
-type Tracker struct {
-    fileIndex    map[string]*FileInfo
-    peerIndex    map[string]map[string]bool
-    peerLastSeen map[string]time.Time
-    mu           sync.RWMutex
-}
-\end{lstlisting}
+% Key code examples with explanations
 
-\chapter{Testing Data}
- [Detailed test results and analysis]
+\chapter{Testing Data and Detailed Results}
+% Detailed test results and analysis
 
 \chapter{User Manual}
- [System usage instructions]
+% System usage instructions
 
 \renewcommand\bibname{References}
 \begin{raggedright} % Prevents justification issues
