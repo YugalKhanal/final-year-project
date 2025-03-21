@@ -9,6 +9,10 @@
 \usepackage{float}
 \usepackage{booktabs}
 \usepackage{xcolor}
+% \usepackage{titlesec}
+\usepackage{parskip}
+\setlength{\parskip}{1em}
+\setlength{\parindent}{0pt}
 
 % Code listing settings
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -96,6 +100,7 @@ The main objective of this project is to design and implement a robust and scala
 	\item Implement secure encryption mechanisms to safeguard data integrity.
 \end{itemize}
 
+
 \section{Evaluation Criteria}
  [Description of the metrics and methods used to evaluate the system]
 
@@ -179,15 +184,15 @@ Certain design principles and patterns dictated the system's architecture:
 	\item \textbf{Scalability:} By distributing file storage and transfer responsibilities among peers themselves, the system can scale to handle many simultaneous users and large files with no central bottleneck.
 	\item \textbf{Performance Optimisation:} The system includes optimisations like parallel downloads, piece prioritisation (rarest first), etc. to maximise file transfer speeds.
 	\item \textbf{Protocol Flexibility:} The dual TCP and UDP transport layer allows the system to adapt to different network conditions when NAT traversal is required.
-	\item \textbf{Data Integrity:} Hashing and verification mechanisms are implemented to ensure that file chunks are not corrupted during transfer and tampered with.
+	\item \textbf{Data Integrity:} \sloppy{Hashing and verification mechanisms are implemented to ensure that file chunks are not corrupted during transfer and tampered with.}
 \end{itemize}
 
 The system was developed in Go (Golang), chosen for its efficiency, excellent concurrency model with goroutines and channels, strong standard networking (among others) libraries, and cross-platform compatibility. The development environment consisted of:
 \begin{itemize}
 	\item Go 1.23 for the programming language on the local machine running NixOS(btw).
-	\item Multiple virtual machines (VMs) running Ubuntu to simulate a distributed network
-	\item Network configuration with various NAT setups to test NAT traversal
-	\item Comprehensive logging for debugging and monitoring
+	\item Multiple virtual machines (VMs) running Ubuntu to simulate a distributed network.
+	\item Network configuration with various NAT setups to test NAT traversal.
+	\item Comprehensive logging for debugging and monitoring.
 \end{itemize}
 
 \section{Tracker Component}
@@ -195,6 +200,10 @@ The system was developed in Go (Golang), chosen for its efficiency, excellent co
 % Data structures and algorithms
 % HTTP endpoints and protocol
 % Implementation challenges and solutions
+
+The tracker servers as a lightweight coordination service that helps peers discover each other and share file metadata. It maintains an index of available files and the peers sharing them.
+
+\section*{Design Considerations}
 
 \section{File Server Component}
 % Design considerations
@@ -312,10 +321,8 @@ The system was developed in Go (Golang), chosen for its efficiency, excellent co
 
 \renewcommand\bibname{References}
 \begin{raggedright} % Prevents justification issues
-	\bibliographystyle{unsrturl}
+	\bibliographystyle{unsrt}
 	\bibliography{references}
 \end{raggedright}
-
-
 
 \end{document}
