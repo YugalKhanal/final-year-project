@@ -55,7 +55,6 @@
 % Define custom inline code command
 \newcommand{\code}[1]{\lstinline[style=inlineCode]!#1!}
 
-
 \title{Peer-to-Peer File Sharing System:\\A Robust and Scalable Implementation}
 \author{Yugal Khanal\\2302704}
 \date{\today}
@@ -108,7 +107,7 @@ The main objective of this project is to design and implement a robust and scala
 	\item System Performance: The system's performance will be evaluated it terms of latency, download speeds, system response and throughput efficiency under various network conditions.
 	\item Scalability: The system's ability to handle increasing numbers of simultaneous connections and file-sharing requests without performance degradation.
 	\item Fault Tolerance: Evaluation of the system's resilience to peer failures and disconnections, network disruptions, and data corruption.
-	\item Security: Effefctiveness of the implemented encryption algorithms, peer authentication mechanisms and safeguards against malicious attacks.
+	\item Security: Effectiveness of the implemented encryption algorithms, peer authentication mechanisms and safeguards against malicious attacks.
 	\item Resource Utilization: The system's resource consumption in terms of CPU, memory, and network bandwidth. How efficient the system is in using bandwidth and system resources.
 \end{itemize}
 
@@ -120,7 +119,7 @@ This project will hopefully also contribute to the advancement and highlight the
 
 \section{Project Scope}
  [Outline of what the project encompasses and its boundaries]
-Peer-to-peer file sharing is the distribuition
+Peer-to-peer file sharing is the distribution
 
 \chapter{Literature Review}
 \section{History of P2P Systems}
@@ -136,18 +135,18 @@ BitTorrent was the biggest milestone in P2P network history, introduced by Bram 
 \section{BitTorrent Protocol Analysis}
 BitTorrent is a peer-to-peer protocol designed for efficient distribution of large files by utilising swarms (the collective group of peers sharing a particular file) to download and upload pieces of the file concurrently. Under the hood, BitTorrent breaks each file into many small pieces called chunks and distributes them among the peers in a swarm, so all participants can download and exchange different pieces with each other simultaneously \cite{bep_0003}. A user requires a torrent descriptor file (.torrent) or a magne link, which contains metadata including a unique info-has identifies for the content and optionally addresses of tracker servers - coordinatin servers that help peers fine each other \cite{bep_0003}. When any BitTorrent client loads this metadata, it joins the swarm by contacting the tracker server or using a Distributed Hash Table (DHT) to discover other peers. Peers in the swarm that have the complete files are called seeders, while those that are still downloading are called leechers or just peers. When the leecher downloads any piece, it begins to upload that piece to others immediately after, contributing to the swarm. This design means that the content distribution load is shared among all peers, and the more peers there are, the faster the download speed can be. With enough peers, a file's original source only needs to provide one full copy, after which the swarm can continue to share the file without the original source's involvement. This decentralised sharing content makes BitTorrent highly scalable.
 
-In a BitTorrent network, at the start, file pieces are downloaded in a strategic order using the \textit{rarest-first}. Peers prioritise requesting pieces that are rarest in the swarm (pieces that fewest other peers have), making those pieces more widely replicated early to ensure availability. This strategy ensures that no single piece/peer becomes a bottleneck in the swarm. BitTorrent also implements a tit-for-tat inspired choking algorithm to encourage cooperation and as it's incentive mechanism. In practice, each client monitors its other peers' upload/download rates and "chokes" (temporarily stops sending data to, downloading can still take place) peers that are not sharing, which unchoking peers that do send data \cite{choking}. Consequently, a peer that uploads more is allowed to download more from others. This leads to faster overall performace for peers that share. This tit-for-tat mechanism is crucial in discouraging free-riders and keeps the swarm healthy. BitTorrent also uses \textit{optimistic unchoking} to randomly unchoke some connections, allowing new and temporarily idle peers to gain pieces \cite{choking}. This also gives a chance to previously choked peers to state that they are willing to share. Because there is no central scheduler, each peer automatically maximises its own download rate by selectively uploading to partners that reciprocate. Doing this also stabilises the download speed, giving peers a consistent download rate.
+In a BitTorrent network, at the start, file pieces are downloaded in a strategic order using the \textit{rarest-first}. Peers prioritise requesting pieces that are rarest in the swarm (pieces that fewest other peers have), making those pieces more widely replicated early to ensure availability. This strategy ensures that no single piece/peer becomes a bottleneck in the swarm. BitTorrent also implements a tit-for-tat inspired choking algorithm to encourage cooperation and as it's incentive mechanism. In practice, each client monitors its other peers' upload/download rates and "chokes" (temporarily stops sending data to, downloading can still take place) peers that are not sharing, which unchoking peers that do send data \cite{choking}. Consequently, a peer that uploads more is allowed to download more from others. This leads to faster overall performance for peers that share. This tit-for-tat mechanism is crucial in discouraging free-riders and keeps the swarm healthy. BitTorrent also uses \textit{optimistic unchoking} to randomly unchoke some connections, allowing new and temporarily idle peers to gain pieces \cite{choking}. This also gives a chance to previously choked peers to state that they are willing to share. Because there is no central scheduler, each peer automatically maximises its own download rate by selectively uploading to partners that reciprocate. Doing this also stabilises the download speed, giving peers a consistent download rate.
 
 BitTorrent's swarming approach of downloading pieces from multiple peers in parallel means that the collective bandwidth of the swarm increases as more peers join, greatly improving download efficiency. To put it simply, the swarm's average throughput scales with the number of peers - a sharp contrast and advantage to traditional client-server downloads limited by a server's capacity.
 
 Initially, BitTorrent relied on centralised servers/trackers for peer discovery, but this presented reliability and availability risks (if a tracker went offline, the swarm could become unreachable). To address this, a \textbf{Distributed Hash Table (DHT)} system was introduced (BitTorrent Enhancement Protocol (BEP) 5) to decentralise peer discovery. The DHT is composed of nodes and stores the location of peers. BitTorrent clients include a DHT node, which is used to contact other nodes in the DHT to get the location of peers to download from using the BitTorrent protocol \cite{bep_0005}. The DHT is based on the Kademlia algorithm. In Kademlia, the distance metric is XOR and the result is interpreted as an unsigned integer. distance(A, B) = $|\text{A xor B}|$ smaller values are closer. The distance metric is used to compare two node IDs or a node ID and an infohash for "closeness" \cite{bep_0005}. Peers publish and retrieve torrent swarm information on the DHT by using the torrent's infohash as the key. To find peers for a torrent, a node performs \texttt{get\_peers} query on the DHT with the infohash. The DHT nodes responsible for that key will respond with a list of IP and ports for peers in the swarm. For any peer joining the swarm, the peer uses \texttt{announce\_peer} along with the torrent infohash to announce its presence to the DHT so other nodes can find it \cite{bep_0005}. This way the DHT functions as a decentralised "tracker", allowing peers to find each other without any central server.
 
-In addition to the DHT, BitTorrent also utilises \textbf{Peer Exchange (PEX)} and \textbf{Local Peer Discovery (LDP)} to further improve peer discovery. PEX is an alternative peer discovery mechanish for swarms once peers have bootstrapped via other mechanishms such as DHT \cite{bep_0011}. PEX allows peers to directly exchange peer lists with each other, enabling them to discover new peers quickly without needing a tracker or DHT. LDP allows peers on the same local network (on the same LAN) to discover each other using multicast (http over udp-multicast) \cite{bep_0014}. It's aim is to minimise the traffic through the ISP's channel use the higher LAN bandwidth instead. Together with the DHT, PEX and LDP provide a robust and decentralised peer discovery mechanism for BitTorrent.
+In addition to the DHT, BitTorrent also utilises \textbf{Peer Exchange (PEX)} and \textbf{Local Peer Discovery (LDP)} to further improve peer discovery. PEX is an alternative peer discovery mechanism for swarms once peers have bootstrapped via other mechanisms such as DHT \cite{bep_0011}. PEX allows peers to directly exchange peer lists with each other, enabling them to discover new peers quickly without needing a tracker or DHT. LDP allows peers on the same local network (on the same LAN) to discover each other using multicast (http over udp-multicast) \cite{bep_0014}. It's aim is to minimise the traffic through the ISP's channel use the higher LAN bandwidth instead. Together with the DHT, PEX and LDP provide a robust and decentralised peer discovery mechanism for BitTorrent.
 
 Through the combination of efficient piece distribution, tit-for-tat incentive mechanism (choking/unchoking), and multiple peer discovery methods, BitTorrent achieves both very high performance and reliability. BitTorrent remains the most widely used P2P protocol today having inspired many other distributed systems.
 
 \section{Modern P2P Applications}
-Although P2P technology began with file sharing, today it is used in a diverse array of modern applications beyond just simple file sharing. One such domain is \textbf{Blockchain} and \textbf{Cryptocurrencies}. They fundamentally operate as P2P networks. In the original white paper for Bitcoin, introduced in 2008, it is described as a "peer-to-peer distributed timestamp server to generate computational proof of the chronological order of transactions" and a Bitcoin to be an electronic coin which is a chain of digital signatures. In a Blockchain network like Bitcoin, each owner transfers the coin to the next by digitally signing a hash of the previous transaction and the public key of the next owner and adding these to the end of the coin without a central authority \cite{bitcoin}. Each node also maintains a copy of the ledger and participates in a proof-of-work protocol to agree on the next block of transactions. The proof-of-work involves finding a value that, when hashed with the block's data, produces a hash with some number of leading zeros \cite{bitcoin}. This decentralised design makes the system resilient and resistant to censorship and attacks. It even has an incentive mechanish to encourage participation in the form of newly minted coins or transaction fees, thereby keeping the network running smoothly. Multiple decentralised applications have been built on blockchain P2P networks (Ethereum being the most popular).
+Although P2P technology began with file sharing, today it is used in a diverse array of modern applications beyond just simple file sharing. One such domain is \textbf{Blockchain} and \textbf{Cryptocurrencies}. They fundamentally operate as P2P networks. In the original white paper for Bitcoin, introduced in 2008, it is described as a "peer-to-peer distributed timestamp server to generate computational proof of the chronological order of transactions" and a Bitcoin to be an electronic coin which is a chain of digital signatures. In a Blockchain network like Bitcoin, each owner transfers the coin to the next by digitally signing a hash of the previous transaction and the public key of the next owner and adding these to the end of the coin without a central authority \cite{bitcoin}. Each node also maintains a copy of the ledger and participates in a proof-of-work protocol to agree on the next block of transactions. The proof-of-work involves finding a value that, when hashed with the block's data, produces a hash with some number of leading zeros \cite{bitcoin}. This decentralised design makes the system resilient and resistant to censorship and attacks. It even has an incentive mechanism to encourage participation in the form of newly minted coins or transaction fees, thereby keeping the network running smoothly. Multiple decentralised applications have been built on blockchain P2P networks (Ethereum being the most popular).
 
 Decentralised data storage and content distribution is another area where P2P networks are used. IPFS (InterPlanetary File System) is a notable example of modern P2P protocol for distributed file storage. It's a protocol and network designed to create a content-addressable, peer-to-peer method of storing and sharing hypermedia in a distributed file system \cite{IPFS}. It forms a global, decentralised file system in which content is addressed by a unique hash. Upon a request for content, the IPFS network uses a DHT to locate peers that have the content and retrieves it from the fastest available sources. This approach allows content to be shared across multiple nodes, making content delivery efficient and reliable (files remain available even if some nodes disconnect, just like in BitTorrent). Many newer applications, especially Web3 applications, leverage IPFS or similar P2P protocols for content distribution without relying on a central server.
 
@@ -204,6 +203,54 @@ The system was developed in Go (Golang), chosen for its efficiency, excellent co
 The tracker servers as a lightweight coordination service that helps peers discover each other and share file metadata. It maintains an index of available files and the peers sharing them.
 
 \section*{Design Considerations}
+The tracker was designed with these key considerations:
+\begin{itemize}
+	\item \textbf{Minimal State:} The tracker stores only essential information needed for peer discovery, not the file itself.
+	\item \textbf{Availability:} As a central component, the tracker needs to be highly available.
+	\item \textbf{Scalability:} The tracker must efficiently handle many concurrent requests from peers.
+	\item \textbf{Lightweight:} HTTP was chosen for simplicity and compatibility.
+\end{itemize}
+
+As shown in the Listing~\ref{lst:tracker-code}, the several key data structures used allow efficient lookup of files by ID and tracking of which peers have which files.
+
+\section*{HTTP Endpoints}
+The tracker exposes several HTTP endpoints for peers:
+
+\begin{enumerate}
+	\item \textbf{/announce:} Used by peers to announce they are sharing a file.
+	\item \textbf{/peers:} Returns a list of peers sharing a particular file.
+	\item \textbf{/metadata:} Returns detailed metadata about a file in JSON format.
+	\item \textbf{/files:} Lists all available files.
+	\item \textbf{/remove:} Allows peers to indicate they've stopped sharing a file.
+	\item \textbf{/heartbeat:} Used by peers to maintain their active status.
+\end{enumerate}
+
+The core announce handler in the Listing~\ref{lst:handle-announce} demonstrates how peers register files.
+
+\section*{Peer Management}
+The tracker implements an active cleanup process to maintain an accurate list of available peers:
+
+\begin{lstlisting}[language=Go, caption=Peer Cleanup]
+func (t *Tracker) StartCleanupLoop() {
+  config := DefaultCleanupConfig()
+  ticker := time.NewTicker(config.CleanupInterval)
+  go func() {
+      for range ticker.C {
+          t.cleanupInactivePeers(config.InactivityThreshold)
+      }
+  }()
+}
+\end{lstlisting}
+
+This periodic cleanup process removes peers that haven't sent a heartbeat within a set threshold, ensuring that peers searching for files are only directed to active peers.
+
+\section*{Implementation Challenges}
+Several challenges were addressed in the tracker implementation:
+\begin{itemize}
+	\item \textbf{Thread Safety:} Preventing concurrent shared data structure access with extensive use of mutexes.
+	\item \textbf{Stale Peer Detection:} Implementing heartbeat mechanisms for efficient timeouts and cleanup to prevent peers from being directed to inactive nodes.
+	\item \textbf{Efficient Peer Lists:} Optimised peer list format to include necessary connection information while keeping overhead low.
+\end{itemize}
 
 \section{File Server Component}
 % Design considerations
@@ -211,11 +258,33 @@ The tracker servers as a lightweight coordination service that helps peers disco
 % File sharing and downloading processes
 % Connection management
 
+The File Server is the core peer functionality, responsible for sharing files, downloading from other peers, and managing local storage. It implements sophisticated algorithms for file chunk management, peer selection and concurrent transfers, allowing for efficient and resilient file distribution.
+
+The File Server was designed with several important considerations. Concurrent operations allow a peer to simultaneously share and download multiple files without blocking. It has both UDP and TCP support, selecting TCP if available and UDP if not. It implements download mechanisms that can recover from peer failures and network disruptions through retry logic. Lastly, it manages system resources efficiently, ensuring that the system can handle many simultaneous connections without crashing.
+
+The primary data structure is \texttt{FileServer struct, ADD CODE REFERENCE HERE} and is very extensive, tracking file metadata, maintaining references to active peers, local storage, and handlers for asynchronous communication. This structure allows the server to track all ongoing operations and coordinate between components efficiently. The system makes extensive use of Go's concurrency features like goroutines for parallel operations and channels for synchronised communication between different components.
+
+When a file is shared, the \texttt{ShareFile, ADD CODE REFERENCE HERE} is executed. First, the system first generates a unique ID for the file using SHA-1 hashing of the content, ensuring consistent identification across the network. The file is then split into chunks of a fixed size (16MB by default), balancing transfer efficiency and memory usage. The system also calculates a has for each chunk to verify data integrity during transfers. A metadata structure is build with all the file information, including chunk and full hash, size data, and other file properties. This metadata is shared with the tracker, making the file discoverable by other peers.
+
+The download process is one of the more complex implementations in the system and is quite sophisticated. It begins with file discovery, querying the tracker site for file metadata and a list of available peers in the \sloppy{ \texttt{DownloadFile, ADD CODE REFERENCE HERE}} method. The system then establishes connections to multiple peers, with fallback mechanisms in case of connection failures. The piece management strategy is based on BitTorrent's rarest-first approach, prioritising chunks that are least available in the swarm to ensure even distribution, maintaining swarm health. It tracks the active connections in the `peers` map and reuses them for transfers until they fail or disconnect. This simplifies the design but means there is no sophisticated management of connection pooling parameters like idle timeouts or pool sizes. The actual download process occurs in parallel, with multiple chunks being retrieved from different peers simultaneously. Each received chunk is cryptographically verified against the hash in the metadata to ensure data integrity. If a chunk verification fails, it is requested again. Lastly, the verified chunks are written to disk, and the file is reconstructed once all chunks are downloaded.
+
+The File Server handles chunk requests and responses through methods that include retry logic, timeout handling, and checksum verification. The \texttt{downloadChunk, ADD CODE REFERENCE HERE} demonstrates this approach. These are implemented to ensure reliable transfers even in unstable network conditions. For large file transfers, the system implements adaptive timeouts based on chunk size, recognising that larger chunks require more transfer time. The implementation also includes mechanisms to limit concurrent downloads, preventing resource exhaustion while maintaining high throughput.
+
+The system implements backoff strategies~\ref{lst:backoff-strategy} for failed connections/transfers, progressively increasing the wait time between retries to prevent overwhelming the network or the peer.
+
 \section{Transport Layer}
 % TCP/UDP dual protocol design
 % NAT traversal implementation
 % Protocol specifications and message formats
 % Error handling and recovery
+
+The transport layer handles all network connections and communications between peers, allowing for both TCP and UDP protocols. This dual protocol design provides flexibility and optimises performance based on network conditions. The dual protocol design is implemented through a Transport Manager that coordinates communication over both TCP and UDP in~\ref{lst:transport-manager}. This manager presents a unified interface for the higher-level components and handles the underlying protocol implementation details. This approach allows the system to adapt to different network conditions, using TCP for reliability when available and UDP for speed. More importantly, the UDP transport enables NAT traversal through UDP-hole punching, essential for establishing connections between peers behind NAT devices.
+
+The TCP transport provides reliable, ordered data transfer with several key optimisations:~\ref{lst:handleConn}. TCP keepalive ensures that connections remain active even during periods of inactivity, preventing unwanted disconnections. Buffer sizes are adjusted dynamically, optimising for large file transfers. TCP no-delay is enabled to reduce latency for small messages (TCP communications) improving responsiveness and interactivity. A heartbeat mechanism is implemented to periodically check the connection status and detect disconnections removing those peers promptly, allowing the system to recover and attempt alternate connections.
+
+The UDP transport implementation is significantly more complex and provides crucial capabilities for a robust P2P system. It enables faster transfers for non-critical data and implements NAT traversal techniques to establish connections between peers behind NAT devices~\ref{lst:udp-holepunch}. It also implements reliability mechanisms, including acknowledgements and retransmissions, compensating for UDP's inherent unreliability.
+
+The system defines a structured message format for all communications, ensuring consistent exchanges across both transport types~\ref{lst:message-format}. Messages are strongly typed with Golang's type system and include payloads with appropriate headers for different operations, such as chunk requests, chunk responses, and metadata exchanges. This structured approach simplifies parsing and processing of messages, reducing overhead.
 
 \section{Piece Management System}
 % Chunk selection strategies
@@ -311,7 +380,211 @@ The tracker servers as a lightweight coordination service that helps peers disco
 
 \appendix
 \chapter{Code Listings}
-% Key code examples with explanations
+
+\section{Tracker code}
+\begin{lstlisting}[language=Go, caption={TCP transport implementation}, label={lst:tracker-code}]
+// FileInfo stores metadata about each shared file
+type FileInfo struct {
+    FileID      string    `json:"file_id"`
+    Name        string    `json:"name"`
+    Size        int64     `json:"size"`
+    UploadedAt  time.Time `json:"uploaded_at"`
+    Description string    `json:"description"`
+    Categories  []string  `json:"categories"`
+    NumPeers    int       `json:"num_peers"`
+    Extension   string    `json:"extension"`
+    NumChunks   int       `json:"num_chunks"`
+    ChunkSize   int       `json:"chunk_size"`
+    ChunkHashes []string  `json:"chunk_hashes"`
+    TotalHash   string    `json:"total_hash"`
+    TotalSize   int64     `json:"total_size"`
+}
+
+// Tracker maintains the state of files and peers
+type Tracker struct {
+    fileIndex    map[string]*FileInfo       // fileID -> file metadata
+    peerIndex    map[string]map[string]bool // fileID -> peer addresses
+    peerLastSeen map[string]time.Time       // peer address -> last heartbeat
+    mu           sync.RWMutex
+}
+\end{lstlisting}
+
+\section{Handle Announce code}
+\begin{lstlisting}[language=Go, caption={Peer announce implementation}, label={lst:handle-announce}]
+  func (t *Tracker) HandleAnnounce(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var announce struct {
+        FileID      string   `json:"file_id"`
+        PeerAddr    string   `json:"peer_addr"`
+        Name        string   `json:"name"`
+        Size        int64    `json:"size"`
+        Description string   `json:"description"`
+        Categories  []string `json:"categories"`
+        Extension   string   `json:"extension"`
+        NumChunks   int      `json:"num_chunks"`
+        ChunkSize   int      `json:"chunk_size"`
+        ChunkHashes []string `json:"chunk_hashes"`
+        TotalHash   string   `json:"total_hash"`
+        TotalSize   int64    `json:"total_size"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&announce); err != nil {
+        http.Error(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    t.mu.Lock()
+    defer t.mu.Unlock()
+
+    // Update file info if it doesn't exist or if it's changed
+    existingFile, exists := t.fileIndex[announce.FileID]
+    if !exists || existingFile.TotalHash != announce.TotalHash {
+        t.fileIndex[announce.FileID] = &FileInfo{
+            FileID:      announce.FileID,
+            Name:        announce.Name,
+            Size:        announce.Size,
+            UploadedAt:  time.Now(),
+            Description: announce.Description,
+            Categories:  announce.Categories,
+            Extension:   announce.Extension,
+            NumChunks:   announce.NumChunks,
+            ChunkSize:   announce.ChunkSize,
+            ChunkHashes: announce.ChunkHashes,
+            TotalHash:   announce.TotalHash,
+            TotalSize:   announce.TotalSize,
+        }
+    }
+
+    // Initialize peer list for this file if it doesn't exist
+    if _, exists := t.peerIndex[announce.FileID]; !exists {
+        t.peerIndex[announce.FileID] = make(map[string]bool)
+    }
+
+    // Add peer to the file's peer list
+    t.peerIndex[announce.FileID][announce.PeerAddr] = true
+
+    // Update peer's last seen timestamp
+    t.peerLastSeen[announce.PeerAddr] = time.Now()
+
+    // Update peer count
+    t.fileIndex[announce.FileID].NumPeers = len(t.peerIndex[announce.FileID])
+
+    log.Printf("Peer %s announced file %s (Total peers: %d)",
+        announce.PeerAddr, announce.FileID, t.fileIndex[announce.FileID].NumPeers)
+
+    w.WriteHeader(http.StatusOK)
+}
+\end{lstlisting}
+
+\section{Backoff Strategy code}
+\begin{lstlisting}[language=Go, caption={Backoff strategy implementation}, label={lst:backoff-strategy}]
+// If we got here, all peers failed for this attempt
+if attempt < maxRetries-1 {
+    log.Printf("All peers failed for piece %d, attempt %d/%d. Last error: %v",
+        chunkIndex, attempt+1, maxRetries, lastErr)
+    time.Sleep(time.Second * time.Duration(attempt+1))
+    continue
+}
+\end{lstlisting}
+
+\section{Transport Manager}
+\begin{lstlisting}[language=Go, caption={Transport Manager implementation}, label={lst:transport-manager}]
+type TransportManager struct {
+    transports []p2p.Transport
+    rpcch      chan p2p.RPC
+    mu         sync.RWMutex
+}
+
+func NewTransportManager(transports ...p2p.Transport) *TransportManager {
+    tm := &TransportManager{
+        transports: transports,
+        rpcch:      make(chan p2p.RPC, 1024),
+    }
+    
+    // Start consuming from all transports
+    for _, t := range transports {
+        go tm.forwardMessages(t)
+    }
+    
+    return tm
+}
+\end{lstlisting}
+
+\section{handleConn code}
+\begin{lstlisting}[language=Go, caption={handleConn optimisations}, label={lst:handleConn}]
+func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
+  // Set TCP keepalive
+  if tcpConn, ok := conn.(*net.TCPConn); ok {
+      tcpConn.SetKeepAlive(true)
+      tcpConn.SetKeepAlivePeriod(heartbeatInterval)
+      // Set TCP buffer sizes
+      tcpConn.SetReadBuffer(1024 * 1024)  // 1MB read buffer
+      tcpConn.SetWriteBuffer(1024 * 1024) // 1MB write buffer
+      // Enable TCP no delay
+      tcpConn.SetNoDelay(true)
+  }
+  // ...
+}
+\end{lstlisting}
+
+\section{UDP Hole Punching code}
+\begin{lstlisting}[language=Go, caption={UDP Hole Punch Implementation}, label={lst:udp-holepunch}]
+func (t *UDPTransport) Dial(addr string) error {
+  // ...
+  
+  addrs := strings.Split(addr, "|")
+  log.Printf("Attempting UDP hole punching to addresses: %v", addrs)
+  
+  // Try hole punching for each address
+  for _, address := range addrs {
+      // ...
+      
+      // Create and send the PUNCH message
+      punchMsg := fmt.Sprintf("PUNCH:%s:%d", publicIP, listenPort)
+      log.Printf("Starting hole punching to %s (UDP: %s) with message: %s",
+          targetAddr, udpAddr, punchMsg)
+      
+      // Send punch messages with exponential backoff
+      for i := range 5 {
+          // ...
+      }
+  }
+  
+  // Wait for connection or timeout
+  select {
+  case peerAddr := <-t.connectedCh:
+      log.Printf("Connection established via UDP hole punching to %s", peerAddr)
+      // ...
+  case <-time.After(15 * time.Second):
+      log.Printf("UDP hole punching timed out")
+      return fmt.Errorf("UDP hole punching timeout")
+  }
+}
+\end{lstlisting}
+
+\section{Message Format code}
+\begin{lstlisting}[language=Go, caption={Message Format}, label={lst:message-format}]
+type Message struct {
+  Type    string
+  Payload interface{}
+}
+
+// Helper functions to ensure consistent message creation
+func NewChunkRequestMessage(fileID string, chunk int) Message {
+  return Message{
+      Type: MessageTypeChunkRequest,
+      Payload: MessageChunkRequest{
+          FileID: fileID,
+          Chunk:  chunk,
+      },
+  }
+}
+\end{lstlisting}
+
 
 \chapter{Testing Data and Detailed Results}
 % Detailed test results and analysis
