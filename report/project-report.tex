@@ -278,6 +278,48 @@ The system implements backoff strategies~\ref{lst:backoff-strategy} for failed c
 % Protocol specifications and message formats
 % Error handling and recovery
 
+% Transport Layer
+% The transport layer handles all network communication between peers, representing one of the most innovative aspects of the system. Unlike many P2P implementations that rely solely on TCP, this system implements a dual-protocol approach supporting both TCP and UDP, providing significant advantages in terms of performance and connectivity.
+% The dual-protocol design is implemented through a Transport Manager that coordinates communication over both TCP and UDP. This manager presents a unified interface to the higher-level components while handling the complexities of protocol selection and fallback. This approach allows the system to optimize for different transfer scenarios, using TCP for reliability and UDP for speed. Critically, the UDP transport enables NAT traversal through hole punching, essential for establishing direct peer connections across networks. The system can also gracefully fall back from one protocol to the other when network conditions change or connections fail.
+% The TCP transport provides reliable, ordered data transfer with several key optimizations. TCP keepalive ensures that connections remain active even during periods of inactivity, preventing premature disconnections due to NAT timeouts. Optimized buffer sizes are configured for large transfers, improving throughput for file chunks. TCP no-delay is enabled to improve interactive performance by reducing latency. A heartbeat mechanism detects dead connections promptly, allowing the system to recover and attempt alternative connections.
+% The UDP transport implementation is more complex but provides crucial capabilities for a robust P2P system. It enables faster transfers for non-critical data and implements sophisticated NAT traversal through UDP hole punching. The UDP implementation handles large data transfers by segmenting content into appropriately sized packets to avoid fragmentation issues. It also implements reliability mechanisms, including acknowledgments and retransmissions, compensating for UDP's inherent unreliability. Timeout handling is comprehensive, monitoring request status and recovering from failed transmissions.
+% The system defines a structured message protocol for communication, ensuring consistent exchanges across both transport types. Messages are typed and include appropriate payloads for different operations, such as chunk requests, chunk responses, and metadata exchanges. This protocol design provides type safety through Go's strong typing system and allows for future extensions without breaking backward compatibility.
+% The NAT traversal implementation represents a significant technical achievement in the system. Using UDP hole punching, peers can establish direct connections even when both are behind NAT devices or firewalls. The process involves a coordinated exchange of messages, where peers simultaneously send "punch" packets to each other, creating temporary mappings in their respective NAT devices. When successful, these mappings allow direct communication without the need for a relay server. The implementation includes fallback mechanisms and retry logic to handle the variability of NAT behavior across different networks.
+% IPv6 support was considered throughout the transport layer implementation, with the system capable of handling both IPv4 and IPv6 addresses. The transport layer automatically detects the address family in use and adjusts its behavior accordingly. This forward-looking design ensures the system will remain viable as networks transition to IPv6, while still supporting IPv4 networks during the extended transition period.
+
+
+
+% Piece Management System
+% The piece management system coordinates the efficient download of file chunks from multiple peers, ensuring optimal use of available bandwidth and resilience to peer failures. Inspired by BitTorrent's approach but with several enhancements, this component is critical to the system's performance and reliability.
+
+% The piece manager was designed with several important considerations. First, it implements a "rarest-first" selection strategy, prioritizing chunks that are least available in the network to improve overall swarm health. Second, it coordinates parallel downloads from multiple peers, maximizing bandwidth utilization without overwhelming system resources. Third, it provides robust fault recovery, handling failed downloads and peer disconnections gracefully. Finally, it distributes download requests fairly across available peers, preventing any single peer from becoming a bottleneck.
+
+% The core data structure maintains detailed information about each piece and its availability. Each piece record tracks its index, size, verification hash, current status (missing, requested, received, or verified), the peers that have it, and a dynamically calculated priority value. The piece manager itself maintains a map of these piece records, protected by a read-write mutex for thread safety during concurrent operations.
+
+% The piece selection strategy represents a sophisticated algorithm combining rarest-first selection with randomization. The system first identifies all missing pieces that have available sources. It then sorts these candidates by priority, with rarer pieces receiving higher priority. To prevent the "thundering herd" problem where all peers request the same pieces simultaneously, the system introduces a controlled amount of randomness in the selection process. This approach balances efficient swarm operation with fair distribution of load across peers.
+
+% The piece manager maintains comprehensive information about which peers have which pieces, updating this mapping as peers connect and disconnect. When a new peer connection is established, the system registers which pieces that peer has available, increasing the priority of pieces that remain rare. Conversely, when peers disconnect, the system removes them from piece availability records and resets the status of any in-progress pieces requested from that peer. This dynamic adjustment ensures the download continues smoothly despite peer churn.
+
+% Status tracking is detailed and transactional, with pieces moving through well-defined states from missing to verified. When a piece's status changes, the system logs the transition for debugging purposes, providing visibility into the download process. This detailed tracking enables the system to know exactly which pieces are successfully downloaded, which are in progress, and which still need to be requested. The implementation also includes a completion check that verifies all pieces have been successfully downloaded and verified before finalizing the file.
+
+% A significant enhancement over basic BitTorrent implementations is the system's adaptive request scheduling. Rather than requesting a fixed number of pieces, the system dynamically adjusts based on current network conditions and peer availability. In high-bandwidth environments with many peers, the system increases concurrent requests to maximize throughput. In more constrained scenarios, it reduces parallelism to avoid overwhelming resources. This adaptive approach ensures efficient operation across diverse network conditions.
+
+% Storage System
+% The storage system handles the persistent storage of file chunks and metadata on disk, implementing content-addressable storage principles for efficient retrieval and verification. This component ensures data integrity throughout the file sharing process and enables efficient reconstruction of files from downloaded chunks.
+
+% The storage system was designed with several key considerations. It implements content addressing, using file hashes to create reliable references to stored data regardless of location. This approach enables robust verification and prevents duplication. The system efficiently manages individual chunks, providing fast storage and retrieval operations even for very large files. Metadata persistence is comprehensive, maintaining all information needed for future file sharing and verification. Finally, the system implements thorough verification mechanisms to ensure data integrity at every stage.
+
+% Content-addressable storage is implemented through the PathTransform interface, which generates storage paths based on content hashes rather than arbitrary locations. This approach creates a unique, deterministic path for each file based on its content, enables efficient lookup without a centralized index, and prevents duplicates by identifying files by their content. The implementation uses SHA-1 hashing to generate these paths, though the design allows for future upgrades to stronger hash algorithms if needed.
+
+% Chunk management is handled through optimized read and write operations. The reading process calculates appropriate chunk boundaries based on the requested index and file size, then performs an efficient direct read from the correct offset. The writing process includes verification, where the system optionally reads back written data to confirm it matches what was intended to be written. Both operations include retry logic with exponential backoff to handle temporary I/O issues, enhancing reliability on less stable storage systems.
+
+% The system stores detailed metadata for each file to facilitate sharing and verification. This metadata includes the unique file identifier, information about chunk count and size, file extension and original path, cryptographic hashes for each chunk and the complete file, and total size information. This comprehensive metadata enables file integrity verification throughout the process, proper reassembly of chunks during downloads, efficient peer discovery through the tracker, and consistent file identification across the network.
+
+% File and chunk integrity is ensured through a comprehensive hashing system. When a file is shared, the system calculates individual SHA-1 hashes for each chunk and a master hash for the entire file. These hashes are stored in the metadata and used during download to verify each received chunk. This verification system ensures that corrupted or tampered data is detected immediately and triggers re-downloading of affected chunks, maintaining end-to-end data integrity.
+
+% The system includes optional encryption capabilities for sensitive data, implementing AES encryption in Counter (CTR) mode with secure initialization vector handling. This encryption can be applied selectively to files requiring additional security, with the encryption keys managed separately from the file data. The implementation provides transparent encryption and decryption of file data, maintaining the system's usability while adding security for sensitive content.
+% Throughout the storage system implementation, careful attention was paid to error handling and recovery. Every file operation includes comprehensive error checking and appropriate recovery mechanisms, from retrying I/O operations to validating data integrity. This approach ensures that the system remains robust even when faced with unreliable storage media or unexpected system conditions.
+
 The transport layer handles all network connections and communications between peers, allowing for both TCP and UDP protocols. This dual protocol design provides flexibility and optimises performance based on network conditions. The dual protocol design is implemented through a Transport Manager that coordinates communication over both TCP and UDP in~\ref{lst:transport-manager}. This manager presents a unified interface for the higher-level components and handles the underlying protocol implementation details. This approach allows the system to adapt to different network conditions, using TCP for reliability when available and UDP for speed. More importantly, the UDP transport enables NAT traversal through UDP-hole punching, essential for establishing connections between peers behind NAT devices.
 
 The TCP transport provides reliable, ordered data transfer with several key optimisations:~\ref{lst:handleConn}. TCP keepalive ensures that connections remain active even during periods of inactivity, preventing unwanted disconnections. Buffer sizes are adjusted dynamically, optimising for large file transfers. TCP no-delay is enabled to reduce latency for small messages (TCP communications) improving responsiveness and interactivity. A heartbeat mechanism is implemented to periodically check the connection status and detect disconnections removing those peers promptly, allowing the system to recover and attempt alternate connections.
@@ -291,6 +333,18 @@ The system defines a structured message format for all communications, ensuring 
 % Parallel download coordination
 % Implementation details
 % Performance optimizations
+
+The piece management system coordinates the efficient download of file chunks from multiple peers, ensuring optimal use of available bandwidth and resilience to peer failures. Inspired by BitTorrent's approach but with several enhancements, this component is critical to the system's performance and reliability. The core data structure for piece management maintains detailed information about each piece and its availability.
+
+The piece manager was designed with various important considerations. It implements a \texttt{Rarest-First} selection strategy, prioritising chunks that are least available in the network to ensure availability of all chunks and improve swarm health. It coordinates parallel downloads from multiple peers, maximising bandwidth utilisation while maintaing acceptable memory usage. It handles failed downloads and peer disconnections gracefully \textbf{CHECK WHERE EXACTLY THIS IS AND ADD A CODE REFERENCE MAYBE.}
+
+The core data structure maintains detailed information about each piece and its availabiltiy. Each piece record tracks its index, size, hash, current status (missing, requested, received, or verified), the peers that have the piece, and a priority value in the core data structure~\ref{lst:piece-info}. The \texttt{PieceManager} also keeps a comprehensive map of which peers have which pieces, updating this mapping as peers connect and disconnect and is protected by a read-write mutex for thread safety during concurrent operations on shared data structures.
+
+As mentioned above, the piece selection based on the rarest-first strategy combined with randomness~\ref{lst:rarest-first}. It first identifies all missing pieces that have sources and sorts them by priority, with rarer pieces receiving higher priority. However, this causes an issue called the \texttt{Thundering Herd, \textbf{ADD A LIT REFERENCE}} where all peers request the same piece(s) simultaneously. To mitigate this, the system introduces a controlled amount of randomness in the selection process. When a new peer joins, the system registers which pieces that peer has available, increasing the priority of the pieces that remain rare. Conversely, when peers disconnect, the piece manager removes them from the map and resets all connections to that peer. This approach balances efficient swarm operation with fair load distribution amongst peers.
+
+Status tracking is detailed and transactional. Pieces move through well-defined states from missing to verified~\ref{lst:status-tracking}. When a piece's status changes, the system logs the transition for debugging purposes. This tracking of pieces enables the system to kow exactly which pieces are successfully downloaded, which are in progress, and which still need to be requested. It also includes a completion check to verify all pieces before the final file is assembled~\ref{lst:piece-completion}. This even allows to have a download progress bar for a better user experience.
+
+A significant enhancement over basic BitTorrent implementations is the system's adaptive request scheduling. Rather than requesting a fixed number of pieces, the system dynamically adjusts based on current network conditions and peer availability. In high-bandwidth environments with many peers, the system increases concurrent requests to maximize throughput. In more constrained scenarios, it reduces parallelism to avoid overwhelming resources. This adaptive approach ensures efficient operation across diverse network conditions. \textbf{Check this in server.go DownloadFile func 	const maxConcurrent = 10}
 
 \section{Storage System}
 % File chunking design
@@ -504,12 +558,12 @@ func NewTransportManager(transports ...p2p.Transport) *TransportManager {
         transports: transports,
         rpcch:      make(chan p2p.RPC, 1024),
     }
-    
+
     // Start consuming from all transports
     for _, t := range transports {
         go tm.forwardMessages(t)
     }
-    
+
     return tm
 }
 \end{lstlisting}
@@ -535,25 +589,25 @@ func (t *TCPTransport) handleConn(conn net.Conn, outbound bool) {
 \begin{lstlisting}[language=Go, caption={UDP Hole Punch Implementation}, label={lst:udp-holepunch}]
 func (t *UDPTransport) Dial(addr string) error {
   // ...
-  
+
   addrs := strings.Split(addr, "|")
   log.Printf("Attempting UDP hole punching to addresses: %v", addrs)
-  
+
   // Try hole punching for each address
   for _, address := range addrs {
       // ...
-      
+
       // Create and send the PUNCH message
       punchMsg := fmt.Sprintf("PUNCH:%s:%d", publicIP, listenPort)
       log.Printf("Starting hole punching to %s (UDP: %s) with message: %s",
           targetAddr, udpAddr, punchMsg)
-      
+
       // Send punch messages with exponential backoff
       for i := range 5 {
           // ...
       }
   }
-  
+
   // Wait for connection or timeout
   select {
   case peerAddr := <-t.connectedCh:
@@ -585,6 +639,105 @@ func NewChunkRequestMessage(fileID string, chunk int) Message {
 }
 \end{lstlisting}
 
+\section{Piece Manager data structure}
+\begin{lstlisting}[language=Go, caption={Piece manager code}, label={lst:piece-info}]
+type PieceInfo struct {
+  Index    int
+  Size     int
+  Hash     string
+  Status   PieceStatus
+  Peers    map[string]bool // peers that have this piece
+  Priority int             // higher number = higher priority
+}
+
+type PieceManager struct {
+  pieces    map[int]*PieceInfo
+  numPieces int
+  mu        sync.RWMutex
+}
+\end{lstlisting}
+
+\section{Rarest First Implementation}
+\begin{lstlisting}[language=Go, caption={Rarest First code}, label={lst:rarest-first}]
+func (pm *PieceManager) GetNextPieces(n int) []PieceInfo {
+    // ...
+
+    // Sort by priority (rarest first) and add some randomness to avoid all clients
+    // requesting the same pieces simultaneously
+    sort.Slice(candidates, func(i, j int) bool {
+        // 80% of the time use priority, 20% of the time use random order
+        if rand.Float32() < 0.8 {
+            return candidates[i].Priority > candidates[j].Priority
+        }
+        return rand.Intn(2) == 0
+    })
+
+    // Return up to n pieces
+    if len(candidates) > n {
+        candidates = candidates[:n]
+    }
+
+    // Mark pieces as requested
+    for _, piece := range candidates {
+        pm.pieces[piece.Index].Status = PieceRequested
+    }
+
+    return candidates
+}
+\end{lstlisting}
+
+\section{Piece Status Track Implementation}
+\begin{lstlisting}[language=Go, caption={Piece Status Track Code}, label={lst:status-tracking}]
+func (pm *PieceManager) MarkPieceStatus(index int, status PieceStatus) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	if piece, exists := pm.pieces[index]; exists {
+		oldStatus := piece.Status
+		piece.Status = status
+
+		// Log status changes for debugging
+		if oldStatus != status {
+			statusNames := map[PieceStatus]string{
+				PieceMissing:   "Missing",
+				PieceRequested: "Requested",
+				PieceReceived:  "Received",
+				PieceVerified:  "Verified",
+			}
+
+			log.Printf("Piece %d status changed: %s -> %s",
+				index,
+				statusNames[oldStatus],
+				statusNames[status])
+		}
+	}
+}
+\end{lstlisting}
+
+\section{Pieces Completion Implementation}
+\begin{lstlisting}[language=Go, caption={Pieces Completion Code}, label={lst:piece-completion}]
+func (pm *PieceManager) IsComplete() bool {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+
+	totalPieces := len(pm.pieces)
+	verifiedCount := 0
+
+	for _, piece := range pm.pieces {
+		if piece.Status != PieceVerified {
+			return false
+		}
+		verifiedCount++
+	}
+
+	// Debug logging for when we're close to completion
+	if verifiedCount > 0 && verifiedCount >= totalPieces-5 {
+		log.Printf("Completion check: %d/%d pieces verified", verifiedCount, totalPieces)
+	}
+
+	return true
+}
+\end{lstlisting}
 
 \chapter{Testing Data and Detailed Results}
 % Detailed test results and analysis
