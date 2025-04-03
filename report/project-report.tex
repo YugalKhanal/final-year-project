@@ -352,6 +352,9 @@ A significant enhancement over basic BitTorrent implementations is the system's 
 % Metadata management
 % Verification mechanisms
 
+The storage system handles the persistent storage of file chunks and metadata on disk, implementing content-addressable storage principles for efficient retrievl and verification. This component ensures data integrity throughout the file sharing process and enables efficient reconstruction of files from downloaded chunks.
+
+It implements content addressing, using file hashes to create reliable references to stored data regardless of location. This approach guarantees file integrity providing robust verification and preventing duplication. The system 
 \chapter{Technical Challenges and Solutions}
 \section{Network NAT Traversal}
 % The NAT problem in P2P
@@ -738,6 +741,47 @@ func (pm *PieceManager) IsComplete() bool {
 	return true
 }
 \end{lstlisting}
+
+\section{Content Addressable File Storage Implementation}
+\begin{lstlisting}[language=Go, caption={Content Addressable File/Chunk Code}, label={lst:cas-storage}]
+func generateFileHashes(filePath string, chunkSize int) ([]string, string, int64, error) {
+file, err := os.Open(filePath)
+if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to open file: %v", err)
+	}
+defer file.Close()
+
+fileInfo, err := file.Stat()
+if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to get file info: %v", err)
+	}
+
+totalSize := fileInfo.Size()
+numChunks := (totalSize + int64(chunkSize) - 1) / int64(chunkSize)
+chunkHashes := make([]string, int(numChunks))
+
+// Calculate total file hash
+file.Seek(0, 0)
+totalHasher := sha1.New()
+if _, err := io.Copy(totalHasher, file); err != nil {
+		return nil, "", 0, fmt.Errorf("failed to calculate total hash: %v", err)
+	}
+totalHash := hex.EncodeToString(totalHasher.Sum(nil))
+
+// Calculate chunk hashes
+file.Seek(0, 0)
+buf := make([]byte, chunkSize)
+for i := int64(0); i < numChunks; i++ {
+n, err := file.Read(buf)
+if err != nil && err != io.EOF {
+		return nil, "", 0, fmt.Errorf("failed to read chunk: %v", err)
+	}
+chunkHashes[i] = calculateHash(buf[:n])
+}
+
+return chunkHashes, totalHash, totalSize, nil
+}
+
 
 \chapter{Testing Data and Detailed Results}
 % Detailed test results and analysis
