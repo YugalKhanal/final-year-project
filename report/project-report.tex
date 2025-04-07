@@ -297,7 +297,11 @@ A significant enhancement over basic BitTorrent implementations is the system's 
 \section{Storage System}
 The storage system handles the persistent storage of file chunks and metadata on disk, implementing content-addressable storage principles for efficient retrieval and verification. This component ensures data integrity throughout the file sharing process and enables efficient reconstruction of files from downloaded chunks.
 
-It implements content addressing, using file hashes to create reliable references to stored data regardless of location. This approach guarantees file integrity providing robust verification and preventing duplication. The system efficiently manages individual chunks, providing fast access and retrieval even for larger files. The system efficiently manages individual chunks, providing fast access and retrieval even for larger files. It also implements chunk verification mechanisms to ensure that downloaded pieces are not corrupted or tampered with during transfer. This is achieved through cryptographic hashing algorithms (SHA-1) that generate unique hashes for each chunk, allowing the system to verify data integrity before writing to disk.
+It implements content addressing, using file hashes to create reliable references to stored data regardless of location. This approach guarantees file integrity providing robust verification and preventing duplication. The system efficiently manages individual chunks, providing fast access and retrieval even for larger files. The system efficiently manages individual chunks, providing fast access and retrieval even for larger files. Metadata persistence is comprehensive, storing detailed information about each file, including its size, hash, and chunk information. This metadata is used for quick lookups and verification during file transfers. Finally, the systems implements thorough data integrity checks, ensuring data is not corrupted at any stage of the process.
+
+Content-addressable storage is implemented through the \textbf{PathTransformFunc}~\ref{lst:cas-storage}. This approach creates a unique, deterministic path for each file based on its content, enables efficient lookup and retrieval, and prevents duplicates. The implementation uses SHA-1 hashing to generate unique identifiers, though the design allows for further enhancements to stronger hashing algorithms.
+
+Chunk management is handled through 
 
 \chapter{Technical Challenges and Solutions}
 \section{Network NAT Traversal}
@@ -688,44 +692,27 @@ func (pm *PieceManager) IsComplete() bool {
 
 \section{Content Addressable File Storage Implementation}
 \begin{lstlisting}[language=Go, caption={Content Addressable File/Chunk Code}, label={lst:cas-storage}]
-func generateFileHashes(filePath string, chunkSize int) ([]string, string, int64, error) {
-file, err := os.Open(filePath)
-if err != nil {
-		return nil, "", 0, fmt.Errorf("failed to open file: %v", err)
-	}
-defer file.Close()
+  // From store.go
+type PathTransformFunc func(string) PathKey
 
-fileInfo, err := file.Stat()
-if err != nil {
-		return nil, "", 0, fmt.Errorf("failed to get file info: %v", err)
-	}
-
-totalSize := fileInfo.Size()
-numChunks := (totalSize + int64(chunkSize) - 1) / int64(chunkSize)
-chunkHashes := make([]string, int(numChunks))
-
-// Calculate total file hash
-file.Seek(0, 0)
-totalHasher := sha1.New()
-if _, err := io.Copy(totalHasher, file); err != nil {
-		return nil, "", 0, fmt.Errorf("failed to calculate total hash: %v", err)
-	}
-totalHash := hex.EncodeToString(totalHasher.Sum(nil))
-
-// Calculate chunk hashes
-file.Seek(0, 0)
-buf := make([]byte, chunkSize)
-for i := int64(0); i < numChunks; i++ {
-n, err := file.Read(buf)
-if err != nil && err != io.EOF {
-		return nil, "", 0, fmt.Errorf("failed to read chunk: %v", err)
-	}
-chunkHashes[i] = calculateHash(buf[:n])
+type PathKey struct {
+    PathName string
+    Filename string
 }
 
-return chunkHashes, totalHash, totalSize, nil
+func (p PathKey) FullPath() string {
+    return fmt.Sprintf("%s/%s", p.PathName, p.Filename)
 }
 
+func CASPathTransformFunc(key string) PathKey {
+    hash := sha1.Sum([]byte(key))
+    hashStr := hex.EncodeToString(hash[:])
+    return PathKey{
+        PathName: hashStr[:5],
+        Filename: hashStr,
+    }
+}
+\end{lstlisting}
 
 \chapter{Testing Data and Detailed Results}
 % Detailed test results and analysis
