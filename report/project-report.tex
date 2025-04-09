@@ -301,10 +301,19 @@ It implements content addressing, using file hashes to create reliable reference
 
 Content-addressable storage is implemented through the \textbf{PathTransformFunc}~\ref{lst:cas-storage}. This approach creates a unique, deterministic path for each file based on its content, enables efficient lookup and retrieval, and prevents duplicates. The implementation uses SHA-1 hashing to generate unique identifiers, though the design allows for further enhancements to stronger hashing algorithms.
 
-Chunk management is handled through 
+Chunk management is handled through read and write operations. The reading process defined implemented in \texttt{ReadChunk}~\ref{lst:read-chunk} calculates appropriate chunk boundaries based on the requested index and file size, then performs an efficient direct read from the correct offset.
+
+The writing process defined in \texttt{writeAndVerifyChunk}\ref{lst:write-and-verify-chunk}, includes verification, where the system optionally reads back written data to confirm it matches what was intended to be written \textbf{CHECK THIS, IS THIS A HAS VERIFICATION OR JUST A FILE CONTENT VERIFICATION}.
+
+Both oprations include retry logic with exponential backoff to handle temporary I/O failures, enhancing reliability on systems with less reliable storage. The system stores detailed \texttt{Metadata}~\ref{lst:metadata-struct} for each file to facilitate sharing and verification. This comprehensive metadata enables file integrity checks throughout the sharing process and proper re-assembly of chunks during downloads. As mentioned before in the Tracker section, this metadata is stored on the tracker allowing for efficient peer discovery.
+
+File and chunk integrity is ensured through a hashing system implemented with \texttt{generateFileHashes}~\ref{lst:generate-file-hashes}. When the file is shared, the system calculates individual SHA-1 hashes for each chunk and a master hash for the complete file. All hashes are stored in the metadata and actively used during the downlaod process to verify each received chunk and the complete file in the end. This verification system ensures that corrupted or tampered data is detected immediately and triggers re-downloading of affected chunks, maintaining data integrity.
+
+Throughout the storage system implementation, careful attention was paid to error handling and recovery. Every ifle operation includes detailed error checking and approriate recovery/fallback mechanisms, from retrying I/O operations and network connections in case of failures to validating data integrity. This approach ensures that the system remains robust even when faced with unreliable storage media or unexpected system conditions.
 
 \chapter{Technical Challenges and Solutions}
 \section{Network NAT Traversal}
+
 % The NAT problem in P2P
 % UDP hole punching implementation
 % Fallback mechanisms
@@ -711,6 +720,164 @@ func CASPathTransformFunc(key string) PathKey {
         PathName: hashStr[:5],
         Filename: hashStr,
     }
+}
+\end{lstlisting}
+
+\section{Read Chunk Management Implementation}
+\begin{lstlisting}[language=Go, caption={ReadChunk Code}, label={lst:read-chunk}]
+// From store.go
+func (s *Store) ReadChunk(filePath string, chunkIndex int) ([]byte, error) {
+    file, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
+    if err != nil {
+        return nil, fmt.Errorf("failed to open file: %v", err)
+    }
+    defer file.Close()
+
+    // Get file size
+    fileInfo, err := file.Stat()
+    if err != nil {
+        return nil, fmt.Errorf("failed to get file info: %v", err)
+    }
+
+    // Calculate chunk boundaries
+    startOffset := int64(chunkIndex * ChunkSize)
+    if startOffset >= fileInfo.Size() {
+        return nil, fmt.Errorf("chunk start offset exceeds file size")
+    }
+
+    endOffset := startOffset + int64(ChunkSize)
+    if endOffset > fileInfo.Size() {
+        endOffset = fileInfo.Size()
+    }
+
+    chunkSize := endOffset - startOffset
+
+    // Use buffered reading
+    chunk := make([]byte, chunkSize)
+    _, err = file.ReadAt(chunk, startOffset)
+    if err != nil && err != io.EOF {
+        return nil, fmt.Errorf("failed to read chunk: %v", err)
+    }
+
+    return chunk, nil
+}
+\end{lstlisting}
+
+\section{Write Chunk Management Implementation}
+\begin{lstlisting}[language=Go, caption={writeAndVerifyChunk Code}, label={lst:write-and-verify-chunk}]
+// From server.go
+func writeAndVerifyChunk(data []byte, output *os.File, chunkIndex, chunkSize int) error {
+    if data == nil || len(data) == 0 {
+        return fmt.Errorf("empty chunk data")
+    }
+
+    startOffset := int64(chunkIndex * chunkSize)
+
+    // Verify chunk size
+    if len(data) > chunkSize {
+        return fmt.Errorf("oversized chunk data: %d bytes, max allowed: %d", len(data), chunkSize)
+    }
+
+    // Write chunk with retry
+    for retries := range 3 {
+        written, err := output.WriteAt(data, startOffset)
+        if err != nil {
+            if retries < 2 {
+                time.Sleep(time.Duration(retries+1) * 100 * time.Millisecond)
+                continue
+            }
+            return fmt.Errorf("write error: %v", err)
+        }
+
+        if written != len(data) {
+            if retries < 2 {
+                continue
+            }
+            return fmt.Errorf("incomplete write: %d of %d bytes", written, len(data))
+        }
+
+        // If we get here, verify the written data by reading it back
+        if retries == 0 {
+            verifyBuf := make([]byte, len(data))
+            _, readErr := output.ReadAt(verifyBuf, startOffset)
+            if readErr != nil {
+                if retries < 2 {
+                    time.Sleep(time.Duration(retries+1) * 100 * time.Millisecond)
+                    continue
+                }
+                return fmt.Errorf("verification read error: %v", readErr)
+            }
+
+            // Compare written and read data
+            if !bytes.Equal(data, verifyBuf) {
+                if retries < 2 {
+                    time.Sleep(time.Duration(retries+1) * 100 * time.Millisecond)
+                    continue
+                }
+                return fmt.Errorf("data verification failed")
+            }
+        }
+
+        return nil
+    }
+
+    return fmt.Errorf("failed to write chunk after retries")
+}
+\end{lstlisting}
+
+\section{Metadata struct Implementation}
+\begin{lstlisting}[language=Go, caption={Metadata Code}, label={lst:metadata-struct}]
+type Metadata struct {
+		FileID        string
+		NumChunks     int
+		ChunkSize     int
+		FileExtension string
+		OriginalPath  string
+		ChunkHashes   []string
+		TotalHash     string
+		TotalSize     int64
+	}
+\end{lstlisting}
+
+\section{Hash Generation Implementation}
+\begin{lstlisting}[language=Go, caption={generateFileHashes Code}, label={lst:generate-file-hashes}]
+// From piece_verification.go
+func generateFileHashes(filePath string, chunkSize int) ([]string, string, int64, error) {
+    file, err := os.Open(filePath)
+    if err != nil {
+        return nil, "", 0, fmt.Errorf("failed to open file: %v", err)
+    }
+    defer file.Close()
+
+    fileInfo, err := file.Stat()
+    if err != nil {
+        return nil, "", 0, fmt.Errorf("failed to get file info: %v", err)
+    }
+
+    totalSize := fileInfo.Size()
+    numChunks := (totalSize + int64(chunkSize) - 1) / int64(chunkSize)
+    chunkHashes := make([]string, int(numChunks))
+
+    // Calculate total file hash
+    file.Seek(0, 0)
+    totalHasher := sha1.New()
+    if _, err := io.Copy(totalHasher, file); err != nil {
+        return nil, "", 0, fmt.Errorf("failed to calculate total hash: %v", err)
+    }
+    totalHash := hex.EncodeToString(totalHasher.Sum(nil))
+
+    // Calculate chunk hashes
+    file.Seek(0, 0)
+    buf := make([]byte, chunkSize)
+    for i := int64(0); i < numChunks; i++ {
+        n, err := file.Read(buf)
+        if err != nil && err != io.EOF {
+            return nil, "", 0, fmt.Errorf("failed to read chunk: %v", err)
+        }
+        chunkHashes[i] = calculateHash(buf[:n])
+    }
+
+    return chunkHashes, totalHash, totalSize, nil
 }
 \end{lstlisting}
 
