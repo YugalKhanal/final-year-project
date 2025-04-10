@@ -186,7 +186,7 @@ Certain design principles and patterns dictated the system's architecture:
 	\item \textbf{Data Integrity:} \sloppy{Hashing and verification mechanisms are implemented to ensure that file chunks are not corrupted during transfer and tampered with.}
 \end{itemize}
 
-The system was developed in Go (Golang), chosen for its efficiency, excellent concurrency model with goroutines and channels, strong standard networking (among others) libraries, and cross-platform compatibility. The development environment consisted of:
+The system was developed in Go (Golang), chosen for its efficiency, excellent concurrency model with Goroutines and Channels, strong standard networking (among others) libraries, and cross-platform compatibility. The development environment consisted of:
 \begin{itemize}
 	\item Go 1.23 for the programming language on the local machine running NixOS(btw).
 	\item Multiple virtual machines (VMs) running Ubuntu to simulate a distributed network.
@@ -309,19 +309,43 @@ Both oprations include retry logic with exponential backoff to handle temporary 
 
 File and chunk integrity is ensured through a hashing system implemented with \texttt{generateFileHashes}~\ref{lst:generate-file-hashes}. When the file is shared, the system calculates individual SHA-1 hashes for each chunk and a master hash for the complete file. All hashes are stored in the metadata and actively used during the downlaod process to verify each received chunk and the complete file in the end. This verification system ensures that corrupted or tampered data is detected immediately and triggers re-downloading of affected chunks, maintaining data integrity.
 
-Throughout the storage system implementation, careful attention was paid to error handling and recovery. Every ifle operation includes detailed error checking and approriate recovery/fallback mechanisms, from retrying I/O operations and network connections in case of failures to validating data integrity. This approach ensures that the system remains robust even when faced with unreliable storage media or unexpected system conditions.
+Throughout the storage system implementation, careful attention was paid to error handling and recovery. Every file operation includes detailed error checking and approriate recovery/fallback mechanisms, from retrying I/O operations and network connections in case of failures to validating data integrity. This approach ensures that the system remains robust even when faced with unreliable storage media or unexpected system conditions.
 
 \chapter{Technical Challenges and Solutions}
+During the implementation of the P2P file sharing system, several technical challenges were encountered and addressed. This chapter discusses the most significant challenges and the solutions implemented to overcome them.
+
 \section{Network NAT Traversal}
 
 % The NAT problem in P2P
 % UDP hole punching implementation
 % Fallback mechanisms
+One of the most significant challenges in implementing a peer-to-peer system is establishing direct connections between peers that are behind Network Address Translation (NAT) devices. NAT is ubiquitous in modern networks, with almost all home and office routers employing it to map multiple private IP addresses to a single public IP address. While NAT provides benefits for IP address conservation and some security, it creates significant obstacles for P2P communication. NAT devices typically block incoming connections, making it difficult for peers to connect directly to each other.
+
+The fundamental problem lies in NAT's connection model: it typically allows outbound connections but blocks unsolicited inbound connections. This asymmetric behaviour means that two peers behind NATs cannot directly connect to each other through traditional means, as neither can receive an incoming connection request from the other. This is where NAT traversal techniques come into play.
+
+To overcome this limitation, this system implements UDP hole punching, a technique that exploits the connection-tracking behaviour of most NAT devices. The process involves the following steps:
+\begin{itemize}
+	\item Both peers attempt to connect, both send UDP packets to the other's public IP (obtained through the tracker in our case).
+	\item The NAT devices create temporary mapping for these outbound connections, allowing incoming packets from the other peer to be accepted. These initial UDP packets create "holes" or mappings entries in each peer's NAT.
+	\item Subsequent packets can then pass through these holes establishing a bidirectional communication channel.
+\end{itemize}
+
+My implementation includes some key optimisations. Multiple connections attempts with exponential backoff are made to handle network latency variations and packet loss during the hole punching process. Simultaneous connection attempts to multiple possible endpoints (public/local IPs) are made to increase the chances of successful hole punching. In case of failure, the system falls back to TCP connections when possible since UDP is primarily used for NAT traversal. One particularly challenging aspect was handling symmetric NATs \textbf{ADD A LIT REFERENCE HERE} which assigns different public ports for each outbound connections. For these NAT types, a STUN-like \textbf{ADD A LIT REFERENCE HERE} functionality is implemented where the tracker helps peers discover their external IP combinations.
+
+This mixed approach significantly improves the system's ability to establish peer connections across diverse network conditions, with successful connection rates improving from N\% with TCP-only to over N\% with the combined TCP/UDP implementation \textbf{ADD DATA HERE TO BACK UP, for example how much did connections improve, 50\%? 60\%?}.
 
 \section{Concurrent Download Management}
 % Thread safety concerns
 % Goroutine coordination
 % Bandwidth optimization
+
+Managing multiple concurrent downloads from different peers while maintaining system stability presented several technical challenges. The system needs to balance maximising throughput against resource exhaustion, all while handling unpredictable peer behaviour and network conditions. The implementation uses a custom sophisticated piece management and download coordination system with several key components.
+
+\section*{Thread Safety}
+
+Go's concurrent programming model using Goroutines and Channels provided a robust foundation, but required careful synchronisation to prevent race conditions and data corruption. The system makes extensive use of mutex locks (both read-write and standard) to protect shared data structures, like the piece map, peer connections, and, status information, etc. This ensures that multiple Goroutines can safely access and modify shared data without causing inconsistencies or crashes. Particularly challenging aspect was ensuring thready safety during peer list updates, when peers might disconnect during an active transfer.
+
+
 
 \section{Fault Tolerance Implementation}
 % Handling peer disconnections
